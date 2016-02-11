@@ -1,0 +1,9 @@
+NOTES
+=====
+
+* watch over torrent directory
+* import subset into rtorrent
+* switch priority off for some files to fit subset in space
+* watch for completed files
+* rsync completed section to external server
+* once complete, rotate to next subset
