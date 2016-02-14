@@ -4,6 +4,8 @@ from pyrocore import config
 from pyrocore.scripts import base
 from pprint import pprint, pformat
 import subprocess
+import tempfile
+import os
 
 # This will need to run as a cron.  It can run every hour perhaps.
 # Each run, it stops the torrent.
@@ -26,6 +28,8 @@ class MyProxy(object):
     fn_get_size_files = None
     fn_get_completed_chunks = None
     fn_get_path = None
+    fn_set_priority = None
+    fn_get_size_bytes = None
 
     def __init__(self, engine):
         self.engine = engine
@@ -33,6 +37,8 @@ class MyProxy(object):
         self.fn_get_size_files = getattr(engine._rpc.d, 'get_size_files')
         self.fn_get_completed_chunks = getattr(engine._rpc.f, 'get_completed_chunks')
         self.fn_get_path = getattr(engine._rpc.f, 'get_path')
+        self.fn_set_priority = getattr(engine._rpc.f, 'set_priority')
+        self.fn_get_size_bytes = getattr(engine._rpc.f, 'get_size_bytes')
 
     def get_size_chunks(self, id_):
         return self.fn_get_size_chunks(id_)
@@ -45,6 +51,12 @@ class MyProxy(object):
 
     def get_path(self, id_):
         return self.fn_get_path(id_)
+    
+    def set_priority(self, id_, priority):
+        return self.fn_set_priority(id_, priority)
+
+    def get_size_bytes(self, id_):
+        return self.fn_get_size_bytes(id_)
 
 
 class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
@@ -85,14 +97,16 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
         self.LOG.info("Locally completed files: %s" % pformat(local_completed_files))
 
-        self.sync_completed_files_to_remote()
+        self.sync_completed_files_to_remote(local_completed_files)
         remote_completed_list = self.scan_remote_for_completed_list()
         pprint(remote_completed_list)
 
-        self.remove_completed_files()
+        self.remove_completed_files(local_completed_files)
         self.set_all_files_to_zero_priority()
         next_group = self.generate_next_group(remote_completed_list)
-        self.set_priority(next_group, 1)
+
+        pprint(len(next_group))
+        self.set_priority([x['id'] for x in next_group], 1)
         self.start_torrent(this_item)
         
         self.LOG.info("XMLRPC stats: %s" % proxy)
@@ -116,25 +130,74 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
                 
         return completed_list
 
-    def sync_completed_files_to_remote(self):
-        pass
+    def sync_completed_files_to_remote(self, completed_files):
+        with tempfile.NamedTemporaryFile(
+            suffix=".lst", prefix="transfer_list-", delete=False
+        ) as transfer_list:
+            for path in completed_files:
+                transfer_list.write(path + "\n")
+
+            subprocess.check_call([
+                "rsync", "-aPv", "--files-from=" + transfer_list.name,
+                "/home/amoe/download", "kupukupu:/tmp"
+            ])
+            os.remove(transfer_list.name)
+
+            # XXX: Really need to handle errors & retry until success
 
     def scan_remote_for_completed_list(self):
         output = subprocess.check_output(["ssh", "kupukupu", "ls", "/tmp"])
         remote_files = output.rstrip().split("\n")
         return remote_files
 
-    def remove_completed_files(self):
-        pass
+    def remove_completed_files(self, completed_files):
+        for path in completed_files:
+            os.remove(path)
 
     def set_all_files_to_zero_priority(self):
-        pass
+        id_list = []
+        file_len = self.my_proxy.get_size_files(self.infohash)
+        
+        for i in range(file_len):
+            id_list.append("%s:f%d" % (self.infohash, i))
+
+        self.set_priority(id_list, 0)
 
     def generate_next_group(self, exclude_list):
-        pass
+        file_len = self.my_proxy.get_size_files(self.infohash)
+        file_list = []
+        for i in range(file_len):
+            id_ = "%s:f%d" % (self.infohash, i)
+            size = self.my_proxy.get_size_bytes(id_)
+            path = self.my_proxy.get_path(id_)
+            datum = {
+                'id': id_, 'size': size, 'path': path
+            }
+            file_list.append(datum)
+
+        # filter out items existing on remote
+        filtered_items = [x for x in file_list if x['path'] not in exclude_list]
+
+        # sort items by size
+        filtered_items.sort(key=lambda x: x['size'])
+
+        # pick until we hit the space limit
+        size_so_far = 0
+        group = []
+        for file_ in filtered_items:
+            this_size = file_['size']
+            if (size_so_far + this_size) > self.SPACE_LIMIT:
+                break
+            
+            size_so_far += this_size
+            group.append(file_)
+
+        return group
+        
 
     def set_priority(self, ids, priority):
-        pass
+        for id_ in ids:
+            self.my_proxy.set_priority(id_, priority)
 
     def start_torrent(self, torrent):
         torrent.start()
@@ -142,5 +205,3 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 if __name__ == "__main__":
     base.ScriptBase.setup()
     RtorrentLowSpaceDriver().run()
-
-
