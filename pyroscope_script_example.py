@@ -20,6 +20,17 @@ import subprocess
 # When the next group is zero items, the completed list will be full, the torrent will have zero space usage and all priorities will be zero.
 
 
+class MyProxy(object):
+    engine = None
+    fn_get_size_chunks = None
+
+    def __init__(self, engine):
+        self.engine = engine
+        self.fn_get_size_chunks = getattr(engine._rpc.f, 'get_size_chunks')
+
+    def get_size_chunks(self, id_):
+        return self.fn_get_size_chunks(id_)
+        
 
 class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     """rtorrent low space driver"""
@@ -30,6 +41,9 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     # five gigabyte space limit
     SPACE_LIMIT = 5 * (2 ** 30);
 
+    my_proxy = None
+    infohash = None
+
     def add_options(self):
         super(RtorrentLowSpaceDriver, self).add_options()
         # basic options
@@ -39,19 +53,20 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
     def mainloop(self):
         proxy = config.engine.open()
+        self.my_proxy = MyProxy(config.engine)
         # store hash in external file
-        infohash = open('hash.txt').read().rstrip()
+        self.infohash = open('hash.txt').read().rstrip()
         items = config.engine.items()
         
         this_item = None
         for i in items:
-            if i.hash == infohash:
+            if i.hash == self.infohash:
                 this_item = i
                 break
         self.LOG.info("Managing torrent: %s" % this_item.name)
 
         self.stop_torrent(this_item)
-        self.check_for_completed_files()
+        local_completed_files = self.check_for_local_completed_files()
         self.sync_completed_files_to_remote()
         remote_completed_list = self.scan_remote_for_completed_list()
         pprint(remote_completed_list)
@@ -67,8 +82,9 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     def stop_torrent(self, torrent):
         torrent.stop()
 
-    def check_for_completed_files(self):
-        pass
+    def check_for_local_completed_files(self):
+        result = self.my_proxy.get_size_chunks(self.infohash + ":f1")
+        pprint(result)
 
     def sync_completed_files_to_remote(self):
         pass
