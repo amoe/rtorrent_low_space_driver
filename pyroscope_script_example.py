@@ -7,6 +7,17 @@ from pprint import pprint, pformat
 
 import pdb
 
+# This will need to run as a cron.  It can run every hour perhaps.
+# Each run, it stops the torrent.
+# Checks for completed files.
+# Syncs the completed files to the remote server, a blocking sync with retry.
+# Now scans the remote path for completed files list.  Any file listed here is
+# complete, because we sync single files at a time and wait until success.
+# Removes the completed paths at file system level.
+# Now sets all file priorities to zero.
+# Now generates the next group, from every file that is NOT in the completed list.
+# When the next group is zero items, the completed list will be full, the torrent will have zero space usage and all priorities will be zero.
+
 
 
 class UserScript(base.ScriptBaseWithConfig):
