@@ -16,6 +16,9 @@ import pdb
 # Removes the completed paths at file system level.
 # Now sets all file priorities to zero.
 # Now generates the next group, from every file that is NOT in the completed list.
+# Now sets priorities on the next group to 1.
+# Now starts the torrent.
+# If there are no completed files in one run, the sync will sync zero files, and the next group will be the same as the previous group, so the operation will be idempotent.
 # When the next group is zero items, the completed list will be full, the torrent will have zero space usage and all priorities will be zero.
 
 
