@@ -31,11 +31,17 @@ class MyProxy(object):
     fn_set_priority = None
     fn_get_size_bytes = None
     fn_get_priority = None
+    fn_update_priorities = None
 
     def __init__(self, engine):
         self.engine = engine
-        self.fn_get_size_chunks = getattr(engine._rpc.f, 'get_size_chunks')
+
+        # 'd' namespace
         self.fn_get_size_files = getattr(engine._rpc.d, 'get_size_files')
+        self.fn_update_priorities = getattr(engine._rpc.d, 'update_priorities')
+
+        # 'f' namespace
+        self.fn_get_size_chunks = getattr(engine._rpc.f, 'get_size_chunks')
         self.fn_get_completed_chunks = getattr(engine._rpc.f, 'get_completed_chunks')
         self.fn_get_path = getattr(engine._rpc.f, 'get_path')
         self.fn_set_priority = getattr(engine._rpc.f, 'set_priority')
@@ -62,6 +68,9 @@ class MyProxy(object):
 
     def get_priority(self, id_):
         return self.fn_get_priority(id_)
+    
+    def update_priorities(self, id_):
+        return self.fn_update_priorities(id_)
 
 class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     """rtorrent low space driver"""
@@ -227,9 +236,12 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     def set_priority(self, ids, priority):
         for id_ in ids:
             self.my_proxy.set_priority(id_, priority)
+        self.my_proxy.update_priorities(self.infohash)
 
     def start_torrent(self, torrent):
         torrent.start()
+        
+#        torrent.hash_check()
 
 
     def _zero_out_file(self, path):
