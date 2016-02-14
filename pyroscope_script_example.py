@@ -17,8 +17,8 @@ class UserScript(base.ScriptBaseWithConfig):
     # argument description for the usage information
     ARGS_HELP = "<arg_1>... <arg_n>"
 
-    # ten gigabyte space limit
-    SPACE_LIMIT = 10 * (2 ** 30);
+    # five gigabyte space limit
+    SPACE_LIMIT = 5 * (2 ** 30);
 
 
     def add_options(self):
@@ -48,20 +48,33 @@ class UserScript(base.ScriptBaseWithConfig):
         file_len = call_idx(infohash)
 
         call = getattr(config.engine._rpc.f, 'get_size_bytes')
-        print repr(call)
+#        print repr(call)
 
 
         set_prio = getattr(config.engine._rpc.f, 'set_priority')
+        get_completed_chunks = getattr(config.engine._rpc.f, 'get_completed_chunks')
+        get_size_chunks = getattr(config.engine._rpc.f, 'get_size_chunks')
+        get_path = getattr(config.engine._rpc.f, 'get_path')
+        
 
-
-        print call(infohash + ":f1")
+#        print call(infohash + ":f1")
 
         file_list = []
 
         for i in range(file_len):
             id_ = infohash + ":f" + str(i)
             size = call(id_)
-#            set_prio(id_, 0)
+            set_prio(id_, 0)
+            path = get_path(id_)
+            cmp_chunks = get_completed_chunks(id_)
+            size_chunks = get_size_chunks(id_)
+#            pprint(cmp_chunks)
+#            pprint(size_chunks)
+
+            percentage = int((float(cmp_chunks) / float(size_chunks)) * 100)
+
+
+            print "%s: %d%%" % (path, percentage)
             
             file_info = {
                 "id": id_,
@@ -71,7 +84,22 @@ class UserScript(base.ScriptBaseWithConfig):
             file_list.append(file_info)
 
         file_list.sort(key=lambda x: x['size'])
-        pprint(file_list)
+#        pprint(file_list)
+
+        group = []
+        size_so_far = 0
+
+        for file_ in file_list:
+            this_size = file_['size']
+            if (size_so_far + this_size) > self.SPACE_LIMIT:
+                break
+            size_so_far += this_size
+            group.append(file_)
+
+
+        for file_ in group:
+            set_prio(file_['id'], 1)
+
 
         call2 = getattr(config.engine._rpc.d, 'update_priorities')
         call2(infohash)
