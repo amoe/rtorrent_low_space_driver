@@ -30,6 +30,7 @@ class MyProxy(object):
     fn_get_path = None
     fn_set_priority = None
     fn_get_size_bytes = None
+    fn_get_priority = None
 
     def __init__(self, engine):
         self.engine = engine
@@ -39,6 +40,7 @@ class MyProxy(object):
         self.fn_get_path = getattr(engine._rpc.f, 'get_path')
         self.fn_set_priority = getattr(engine._rpc.f, 'set_priority')
         self.fn_get_size_bytes = getattr(engine._rpc.f, 'get_size_bytes')
+        self.fn_get_priority = getattr(engine._rpc.f, 'get_priority')
 
     def get_size_chunks(self, id_):
         return self.fn_get_size_chunks(id_)
@@ -58,6 +60,8 @@ class MyProxy(object):
     def get_size_bytes(self, id_):
         return self.fn_get_size_bytes(id_)
 
+    def get_priority(self, id_):
+        return self.fn_get_priority(id_)
 
 class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     """rtorrent low space driver"""
@@ -66,11 +70,12 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     ARGS_HELP = "<arg_1>... <arg_n>"
 
     # five gigabyte space limit
-    SPACE_LIMIT = 5 * (2 ** 30);
+    SPACE_LIMIT = 2 * (2 ** 30);
 
     my_proxy = None
     infohash = None
     realpath = None
+    remote_dir = "/tmp/mirror/"   # MUST END IN SLASH
 
     def add_options(self):
         super(RtorrentLowSpaceDriver, self).add_options()
@@ -92,7 +97,11 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
                 this_item = i
                 break
 
-        self.realpath = this_item.realpath
+        if not this_item:
+            raise Exception("could not find specified hash in torrent list")
+
+        #self.realpath = this_item.realpath
+        self.realpath = "/home/amoe/download/" + this_item.name
 
         self.LOG.info("Managing torrent: %s" % this_item.name)
 
@@ -103,14 +112,15 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
         self.sync_completed_files_to_remote(local_completed_files)
         remote_completed_list = self.scan_remote_for_completed_list()
-        pprint(remote_completed_list)
+
+        self.LOG.info("remotely completed files: %s" % pformat(remote_completed_list))
 
         self.remove_completed_files(local_completed_files)
         self.set_all_files_to_zero_priority()
         next_group = self.generate_next_group(remote_completed_list)
 
-        pprint(len(next_group))
         self.set_priority([x['id'] for x in next_group], 1)
+        #NB: hash check?
         self.start_torrent(this_item)
         
         self.LOG.info("XMLRPC stats: %s" % proxy)
@@ -128,35 +138,50 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
             id_ = "%s:f%d" % (self.infohash, i)
             done = self.my_proxy.get_completed_chunks(id_)
             total = self.my_proxy.get_size_chunks(id_)
-            
-            if done == total:
-                completed_list.append(my_proxy.get_path(i))
+            priority = self.my_proxy.get_priority(id_)
+
+            if done == total and priority > 0:
+                completed_list.append(self.my_proxy.get_path(id_))
                 
         return completed_list
 
     def sync_completed_files_to_remote(self, completed_files):
+        tmpfile_path = None
+        
         with tempfile.NamedTemporaryFile(
             suffix=".lst", prefix="transfer_list-", delete=False
         ) as transfer_list:
+            tmpfile_path = transfer_list.name
+
             for path in completed_files:
                 transfer_list.write(path + "\n")
+        
+        
+        cmd = [
+            "rsync", "-aPv", "--files-from=" + tmpfile_path,
+            self.realpath, "kupukupu:" + self.remote_dir
+        ]
+        print ' '.join(cmd)
+        subprocess.check_call(cmd)
+        #os.remove(transfer_list.name)
 
-            subprocess.check_call([
-                "rsync", "-aPv", "--files-from=" + transfer_list.name,
-                self.realpath, "kupukupu:/tmp"
-            ])
-            #os.remove(transfer_list.name)
-
-            # XXX: Really need to handle errors & retry until success
+        # XXX: Really need to handle errors & retry until success
 
     def scan_remote_for_completed_list(self):
-        output = subprocess.check_output(["ssh", "kupukupu", "ls", "/tmp"])
+        output = subprocess.check_output([
+            "ssh", "kupukupu", "find", self.remote_dir, "-type", "f", "-print"
+        ])
         remote_files = output.rstrip().split("\n")
-        return remote_files
+
+        return [
+            x[len(self.remote_dir):] for x in remote_files
+            if x.startswith(self.remote_dir)
+        ]
 
     def remove_completed_files(self, completed_files):
         for path in completed_files:
-            os.remove(os.path.join(self.realpath, path))
+            self._zero_out_file(os.path.join(self.realpath, path))
+        subprocess.check_call(["sync"])
 
     def set_all_files_to_zero_priority(self):
         id_list = []
@@ -205,6 +230,10 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
     def start_torrent(self, torrent):
         torrent.start()
+
+
+    def _zero_out_file(self, path):
+        open(path, 'w').close()
 
 if __name__ == "__main__":
     base.ScriptBase.setup()
