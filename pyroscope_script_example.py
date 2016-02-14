@@ -70,6 +70,7 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
     my_proxy = None
     infohash = None
+    realpath = None
 
     def add_options(self):
         super(RtorrentLowSpaceDriver, self).add_options()
@@ -90,6 +91,9 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
             if i.hash == self.infohash:
                 this_item = i
                 break
+
+        self.realpath = this_item.realpath
+
         self.LOG.info("Managing torrent: %s" % this_item.name)
 
         self.stop_torrent(this_item)
@@ -139,9 +143,9 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
             subprocess.check_call([
                 "rsync", "-aPv", "--files-from=" + transfer_list.name,
-                "/home/amoe/download", "kupukupu:/tmp"
+                self.realpath, "kupukupu:/tmp"
             ])
-            os.remove(transfer_list.name)
+            #os.remove(transfer_list.name)
 
             # XXX: Really need to handle errors & retry until success
 
@@ -152,7 +156,7 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
     def remove_completed_files(self, completed_files):
         for path in completed_files:
-            os.remove(path)
+            os.remove(os.path.join(self.realpath, path))
 
     def set_all_files_to_zero_priority(self):
         id_list = []
