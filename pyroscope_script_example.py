@@ -1,11 +1,8 @@
 #! /usr/bin/env python-pyrocore
 
-# Enter the magic kingdom
 from pyrocore import config
 from pyrocore.scripts import base
 from pprint import pprint, pformat
-
-import pdb
 
 # This will need to run as a cron.  It can run every hour perhaps.
 # Each run, it stops the torrent.
@@ -43,10 +40,45 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
         proxy = config.engine.open()
         # store hash in external file
         infohash = open('hash.txt').read().rstrip()
-
+        
+        self.stop_torrent()
+        self.check_for_completed_files()
+        self.sync_completed_files_to_remote()
+        completed_list = self.scan_remote_for_completed_list()
+        self.remove_completed_files()
+        self.set_all_files_to_zero_priority()
+        next_group = self.generate_next_group(completed_list)
+        self.set_priority(next_group, 1)
+        self.start_torrent()
+        
         self.LOG.info("XMLRPC stats: %s" % proxy)
 
+    def stop_torrent(self):
+        pass
 
+    def check_for_completed_files(self):
+        pass
+
+    def sync_completed_files_to_remote(self):
+        pass
+
+    def scan_remote_for_completed_list(self):
+        pass
+
+    def remove_completed_files(self):
+        pass
+
+    def set_all_files_to_zero_priority(self):
+        pass
+
+    def generate_next_group(self, exclude_list):
+        pass
+
+    def set_priority(self, ids, priority):
+        pass
+
+    def start_torrent(self):
+        pass
 
 if __name__ == "__main__":
     base.ScriptBase.setup()
