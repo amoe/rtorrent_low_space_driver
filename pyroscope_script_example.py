@@ -23,14 +23,29 @@ import subprocess
 class MyProxy(object):
     engine = None
     fn_get_size_chunks = None
+    fn_get_size_files = None
+    fn_get_completed_chunks = None
+    fn_get_path = None
 
     def __init__(self, engine):
         self.engine = engine
         self.fn_get_size_chunks = getattr(engine._rpc.f, 'get_size_chunks')
+        self.fn_get_size_files = getattr(engine._rpc.d, 'get_size_files')
+        self.fn_get_completed_chunks = getattr(engine._rpc.f, 'get_completed_chunks')
+        self.fn_get_path = getattr(engine._rpc.f, 'get_path')
 
     def get_size_chunks(self, id_):
         return self.fn_get_size_chunks(id_)
-        
+
+    def get_size_files(self, id_):
+        return self.fn_get_size_files(id_)
+
+    def get_completed_chunks(self, id_):
+        return self.fn_get_completed_chunks(id_)
+
+    def get_path(self, id_):
+        return self.fn_get_path(id_)
+
 
 class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     """rtorrent low space driver"""
@@ -67,6 +82,9 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
         self.stop_torrent(this_item)
         local_completed_files = self.check_for_local_completed_files()
+
+        self.LOG.info("Locally completed files: %s" % pformat(local_completed_files))
+
         self.sync_completed_files_to_remote()
         remote_completed_list = self.scan_remote_for_completed_list()
         pprint(remote_completed_list)
@@ -82,9 +100,21 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     def stop_torrent(self, torrent):
         torrent.stop()
 
+    # returns list of locally completed files as IDs
     def check_for_local_completed_files(self):
-        result = self.my_proxy.get_size_chunks(self.infohash + ":f1")
-        pprint(result)
+        completed_list = []
+        
+        size_files = self.my_proxy.get_size_files(self.infohash)
+
+        for i in range(size_files):
+            id_ = "%s:f%d" % (self.infohash, i)
+            done = self.my_proxy.get_completed_chunks(id_)
+            total = self.my_proxy.get_size_chunks(id_)
+            
+            if done == total:
+                completed_list.append(my_proxy.get_path(i))
+                
+        return completed_list
 
     def sync_completed_files_to_remote(self):
         pass
