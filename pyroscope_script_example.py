@@ -3,6 +3,7 @@
 from pyrocore import config
 from pyrocore.scripts import base
 from pprint import pprint, pformat
+import subprocess
 
 # This will need to run as a cron.  It can run every hour perhaps.
 # Each run, it stops the torrent.
@@ -40,21 +41,31 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
         proxy = config.engine.open()
         # store hash in external file
         infohash = open('hash.txt').read().rstrip()
+        items = config.engine.items()
         
-        self.stop_torrent()
+        this_item = None
+        for i in items:
+            if i.hash == infohash:
+                this_item = i
+                break
+        self.LOG.info("Managing torrent: %s" % this_item.name)
+
+        self.stop_torrent(this_item)
         self.check_for_completed_files()
         self.sync_completed_files_to_remote()
-        completed_list = self.scan_remote_for_completed_list()
+        remote_completed_list = self.scan_remote_for_completed_list()
+        pprint(remote_completed_list)
+
         self.remove_completed_files()
         self.set_all_files_to_zero_priority()
-        next_group = self.generate_next_group(completed_list)
+        next_group = self.generate_next_group(remote_completed_list)
         self.set_priority(next_group, 1)
-        self.start_torrent()
+        self.start_torrent(this_item)
         
         self.LOG.info("XMLRPC stats: %s" % proxy)
 
-    def stop_torrent(self):
-        pass
+    def stop_torrent(self, torrent):
+        torrent.stop()
 
     def check_for_completed_files(self):
         pass
@@ -63,7 +74,9 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
         pass
 
     def scan_remote_for_completed_list(self):
-        pass
+        output = subprocess.check_output(["ssh", "kupukupu", "ls", "/tmp"])
+        remote_files = output.rstrip().split("\n")
+        return remote_files
 
     def remove_completed_files(self):
         pass
@@ -77,8 +90,8 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     def set_priority(self, ids, priority):
         pass
 
-    def start_torrent(self):
-        pass
+    def start_torrent(self, torrent):
+        torrent.start()
 
 if __name__ == "__main__":
     base.ScriptBase.setup()
