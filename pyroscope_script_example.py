@@ -7,6 +7,8 @@ from pprint import pprint, pformat
 
 import pdb
 
+
+
 class UserScript(base.ScriptBaseWithConfig):
     """
         Just some script you wrote.
@@ -14,6 +16,9 @@ class UserScript(base.ScriptBaseWithConfig):
 
     # argument description for the usage information
     ARGS_HELP = "<arg_1>... <arg_n>"
+
+    # ten gigabyte space limit
+    SPACE_LIMIT = 10 * (2 ** 30);
 
 
     def add_options(self):
@@ -51,23 +56,25 @@ class UserScript(base.ScriptBaseWithConfig):
 
         print call(infohash + ":f1")
 
-
+        file_list = []
 
         for i in range(file_len):
             id_ = infohash + ":f" + str(i)
             size = call(id_)
-            print size
-            print i
-            set_prio(id_, 0)
-            # for file_ in i.files:
-            #     print file_
-            #     print "Name was ", file_.path
-            #     print "Size was ", file_.size
-            #     print "Current prio was ", file_.prio
+#            set_prio(id_, 0)
+            
+            file_info = {
+                "id": id_,
+                "size": size,
+            }
+
+            file_list.append(file_info)
+
+        file_list.sort(key=lambda x: x['size'])
+        pprint(file_list)
 
         call2 = getattr(config.engine._rpc.d, 'update_priorities')
-#        print call2(infohash)
-
+        call2(infohash)
 
         self.LOG.info("XMLRPC stats: %s" % proxy)
 
