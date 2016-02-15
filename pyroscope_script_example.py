@@ -1,12 +1,15 @@
 #! /usr/bin/env python-pyrocore
 
-from pyrocore import config
-from pyrocore.scripts import base
 from pprint import pprint, pformat
 import subprocess
 import tempfile
 import os
 import time
+import rtorrent_xmlrpc
+import sys
+from logging import info, debug, error
+import logging
+import argparse
 
 # This will need to run as a cron.  It can run every hour perhaps.
 # Each run, it stops the torrent.
@@ -25,71 +28,45 @@ import time
 
 class MyProxy(object):
     engine = None
-    fn_get_size_chunks = None
-    fn_get_size_files = None
-    fn_get_completed_chunks = None
-    fn_get_path = None
-    fn_set_priority = None
-    fn_get_size_bytes = None
-    fn_get_priority = None
-    fn_update_priorities = None
-    fn_stop = None
-    fn_start = None
-    fn_get_directory = None
 
     def __init__(self, engine):
         self.engine = engine
 
-        # 'd' namespace
-        self.fn_get_size_files = getattr(engine._rpc.d, 'get_size_files')
-        self.fn_update_priorities = getattr(engine._rpc.d, 'update_priorities')
-        self.fn_stop = getattr(engine._rpc.d, 'stop')
-        self.fn_start = getattr(engine._rpc.d, 'start')
-        self.fn_get_directory = getattr(engine._rpc.d, 'get_directory')
-
-        # 'f' namespace
-        self.fn_get_size_chunks = getattr(engine._rpc.f, 'get_size_chunks')
-        self.fn_get_completed_chunks = getattr(engine._rpc.f, 'get_completed_chunks')
-        self.fn_get_path = getattr(engine._rpc.f, 'get_path')
-        self.fn_set_priority = getattr(engine._rpc.f, 'set_priority')
-        self.fn_get_size_bytes = getattr(engine._rpc.f, 'get_size_bytes')
-        self.fn_get_priority = getattr(engine._rpc.f, 'get_priority')
-
     def get_size_chunks(self, id_):
-        return self.fn_get_size_chunks(id_)
+        return self.engine.f.get_size_chunks(id_)
 
     def get_size_files(self, id_):
-        return self.fn_get_size_files(id_)
+        return self.engine.d.get_size_files(id_)
 
     def get_completed_chunks(self, id_):
-        return self.fn_get_completed_chunks(id_)
+        return self.engine.f.get_completed_chunks(id_)
 
     def get_path(self, id_):
-        return self.fn_get_path(id_)
+        return self.engine.f.get_path(id_)
     
     def set_priority(self, id_, priority):
-        return self.fn_set_priority(id_, priority)
+        return self.engine.f.set_priority(id_, priority)
 
     def get_size_bytes(self, id_):
-        return self.fn_get_size_bytes(id_)
+        return self.engine.f.get_size_bytes(id_)
 
     def get_priority(self, id_):
-        return self.fn_get_priority(id_)
+        return self.engine.f.get_priority(id_)
     
     def update_priorities(self, id_):
-        return self.fn_update_priorities(id_)
+        return self.engine.d.update_priorities(id_)
     
     def stop(self, id_):
-        return self.fn_stop(id_)
+        return self.engine.d.stop(id_)
 
     def start(self, id_):
-        return self.fn_start(id_)
+        return self.engine.d.start(id_)
 
     def get_directory(self, id_):
-        return self.fn_get_directory(id_)
+        return self.engine.d.get_directory(id_)
 
 
-class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
+class RtorrentLowSpaceDriver(object):
     """rtorrent low space driver"""
 
     # argument description for the usage information
@@ -103,41 +80,54 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     realpath = None
     remote_dir = "/tmp/mirror/"   # MUST END IN SLASH
 
-    def add_options(self):
-        super(RtorrentLowSpaceDriver, self).add_options()
-        # basic options
-        ##self.add_bool_option("-n", "--dry-run",
-        ##    help="don't do anything, just tell what would happen")
+    def initialize(self, args):
+        parser = argparse.ArgumentParser()
 
+        parser.add_argument(
+            '--log-level', metavar="LEVEL", type=str, help="Log level",
+            default='INFO'
+        )
+        parser.add_argument('rest_args', metavar="ARGS", nargs='*')            
+        ns = parser.parse_args(args)
 
-    def mainloop(self):
-        proxy = config.engine.open()
-        self.my_proxy = MyProxy(config.engine)
+        logging.basicConfig(
+            level=getattr(logging, ns.log_level),            
+            format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
+        )
+
+        return ns
+
+    def run(self, args):
+        ns = self.initialize(args)
+        print ns.rest_args
+
+        server = rtorrent_xmlrpc.SCGIServerProxy("scgi:///home/amoe/.rtorrent.sock")
+        self.my_proxy = MyProxy(server)
+
         # store hash in external file
         self.infohash = open('hash.txt').read().rstrip()
         self.realpath = self.my_proxy.get_directory(self.infohash)
 
-        self.LOG.info("Managing torrent: %s" % self.realpath)
+        info("Managing torrent: %s" % self.realpath)
 
         self.stop_torrent(self.infohash)
         local_completed_files = self.check_for_local_completed_files()
 
-        self.LOG.info("Locally completed files: %s" % pformat(local_completed_files))
+        info("Locally completed files: %s" % pformat(local_completed_files))
 
         self.sync_completed_files_to_remote(local_completed_files)
         remote_completed_list = self.scan_remote_for_completed_list()
 
-        self.LOG.info("Remotely completed files: %s" % pformat(remote_completed_list))
+        info("Remotely completed files: %s" % pformat(remote_completed_list))
 
         self.remove_completed_files(local_completed_files)
         self.set_all_files_to_zero_priority()
         next_group = self.generate_next_group(remote_completed_list)
 
         self.set_priority([x['id'] for x in next_group], 1)
-        #NB: hash check?
+
+        # NB: hash check?
         self.start_torrent(self.infohash)
-        
-        self.LOG.info("XMLRPC stats: %s" % proxy)
 
     def stop_torrent(self, infohash):
         self.my_proxy.stop(infohash)
@@ -177,12 +167,12 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
         while True:
             try:
-                self.LOG.info("running command: %s", ' '.join(cmd))
+                info("running command: %s", ' '.join(cmd))
                 subprocess.check_call(cmd)
                 os.remove(transfer_list.name)
                 return
             except subprocess.CalledProcessError, e:
-                self.LOG.error("failed to sync files to remote, retrying.  exception was '%s'" % e)
+                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
 
@@ -199,7 +189,7 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
                     if x.startswith(self.remote_dir)
                 ]
             except subprocess.CalledProcessError, e:
-                self.LOG.error("failed to read remote, retrying.  exception was '%s'" % e)
+                error("failed to read remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
     def remove_completed_files(self, completed_files):
@@ -256,12 +246,8 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     def start_torrent(self, infohash):
         self.my_proxy.start(infohash)
 
-#        torrent.hash_check()
-
-
     def _zero_out_file(self, path):
         open(path, 'w').close()
 
 if __name__ == "__main__":
-    base.ScriptBase.setup()
-    RtorrentLowSpaceDriver().run()
+    RtorrentLowSpaceDriver().run(sys.argv[1:])
