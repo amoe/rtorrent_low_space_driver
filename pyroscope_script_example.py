@@ -6,6 +6,7 @@ from pprint import pprint, pformat
 import subprocess
 import tempfile
 import os
+import time
 
 # This will need to run as a cron.  It can run every hour perhaps.
 # Each run, it stops the torrent.
@@ -165,27 +166,37 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
             for path in completed_files:
                 transfer_list.write(path + "\n")
         
-        
         cmd = [
             "rsync", "-aPv", "--files-from=" + tmpfile_path,
             self.realpath, "kupukupu:" + self.remote_dir
         ]
-        print ' '.join(cmd)
-        subprocess.check_call(cmd)
-        #os.remove(transfer_list.name)
+        
+        while True:
+            try:
+                self.LOG.info("running command: %s", ' '.join(cmd))
+                subprocess.check_call(cmd)
+                os.remove(transfer_list.name)
+                return
+            except subprocess.CalledProcessError, e:
+                self.LOG.error("failed to sync files to remote, retrying.  exception was '%s'" % e)
+                time.sleep(60)
 
-        # XXX: Really need to handle errors & retry until success
 
     def scan_remote_for_completed_list(self):
-        output = subprocess.check_output([
-            "ssh", "kupukupu", "find", self.remote_dir, "-type", "f", "-print"
-        ])
-        remote_files = output.rstrip().split("\n")
+        while True:
+            try:
+                output = subprocess.check_output([
+                    "ssh", "kupukupu", "find", self.remote_dir, "-type", "f", "-print"
+                ])
+                remote_files = output.rstrip().split("\n")
 
-        return [
-            x[len(self.remote_dir):] for x in remote_files
-            if x.startswith(self.remote_dir)
-        ]
+                return [
+                    x[len(self.remote_dir):] for x in remote_files
+                    if x.startswith(self.remote_dir)
+                ]
+            except subprocess.CalledProcessError, e:
+                self.LOG.error("failed to read remote, retrying.  exception was '%s'" % e)
+                time.sleep(60)
 
     def remove_completed_files(self, completed_files):
         for path in completed_files:
