@@ -33,6 +33,9 @@ class MyProxy(object):
     fn_get_size_bytes = None
     fn_get_priority = None
     fn_update_priorities = None
+    fn_stop = None
+    fn_start = None
+    fn_get_directory = None
 
     def __init__(self, engine):
         self.engine = engine
@@ -40,6 +43,9 @@ class MyProxy(object):
         # 'd' namespace
         self.fn_get_size_files = getattr(engine._rpc.d, 'get_size_files')
         self.fn_update_priorities = getattr(engine._rpc.d, 'update_priorities')
+        self.fn_stop = getattr(engine._rpc.d, 'stop')
+        self.fn_start = getattr(engine._rpc.d, 'start')
+        self.fn_get_directory = getattr(engine._rpc.d, 'get_directory')
 
         # 'f' namespace
         self.fn_get_size_chunks = getattr(engine._rpc.f, 'get_size_chunks')
@@ -72,6 +78,16 @@ class MyProxy(object):
     
     def update_priorities(self, id_):
         return self.fn_update_priorities(id_)
+    
+    def stop(self, id_):
+        return self.fn_stop(id_)
+
+    def start(self, id_):
+        return self.fn_start(id_)
+
+    def get_directory(self, id_):
+        return self.fn_get_directory(id_)
+
 
 class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
     """rtorrent low space driver"""
@@ -99,23 +115,11 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
         self.my_proxy = MyProxy(config.engine)
         # store hash in external file
         self.infohash = open('hash.txt').read().rstrip()
-        items = config.engine.items()
-        
-        this_item = None
-        for i in items:
-            if i.hash == self.infohash:
-                this_item = i
-                break
+        self.realpath = self.my_proxy.get_directory(self.infohash)
 
-        if not this_item:
-            raise Exception("could not find specified hash in torrent list")
+        self.LOG.info("Managing torrent: %s" % self.realpath)
 
-        #self.realpath = this_item.realpath
-        self.realpath = "/home/amoe/download/" + this_item.name
-
-        self.LOG.info("Managing torrent: %s" % this_item.name)
-
-        self.stop_torrent(this_item)
+        self.stop_torrent(self.infohash)
         local_completed_files = self.check_for_local_completed_files()
 
         self.LOG.info("Locally completed files: %s" % pformat(local_completed_files))
@@ -123,7 +127,7 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
         self.sync_completed_files_to_remote(local_completed_files)
         remote_completed_list = self.scan_remote_for_completed_list()
 
-        self.LOG.info("remotely completed files: %s" % pformat(remote_completed_list))
+        self.LOG.info("Remotely completed files: %s" % pformat(remote_completed_list))
 
         self.remove_completed_files(local_completed_files)
         self.set_all_files_to_zero_priority()
@@ -131,12 +135,12 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
 
         self.set_priority([x['id'] for x in next_group], 1)
         #NB: hash check?
-        self.start_torrent(this_item)
+        self.start_torrent(self.infohash)
         
         self.LOG.info("XMLRPC stats: %s" % proxy)
 
-    def stop_torrent(self, torrent):
-        torrent.stop()
+    def stop_torrent(self, infohash):
+        self.my_proxy.stop(infohash)
 
     # returns list of locally completed files as IDs
     def check_for_local_completed_files(self):
@@ -170,7 +174,7 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
             "rsync", "-aPv", "--files-from=" + tmpfile_path,
             self.realpath, "kupukupu:" + self.remote_dir
         ]
-        
+
         while True:
             try:
                 self.LOG.info("running command: %s", ' '.join(cmd))
@@ -249,9 +253,9 @@ class RtorrentLowSpaceDriver(base.ScriptBaseWithConfig):
             self.my_proxy.set_priority(id_, priority)
         self.my_proxy.update_priorities(self.infohash)
 
-    def start_torrent(self, torrent):
-        torrent.start()
-        
+    def start_torrent(self, infohash):
+        self.my_proxy.start(infohash)
+
 #        torrent.hash_check()
 
 
