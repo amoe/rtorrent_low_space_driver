@@ -78,6 +78,7 @@ class RtorrentLowSpaceDriver(object):
     my_proxy = None
     infohash = None
     realpath = None
+    remote_host = 'kupukupu'
     remote_dir = "/tmp/mirror/"   # MUST END IN SLASH
 
     def initialize(self, args):
@@ -162,7 +163,7 @@ class RtorrentLowSpaceDriver(object):
         
         cmd = [
             "rsync", "-aPv", "--files-from=" + tmpfile_path,
-            self.realpath, "kupukupu:" + self.remote_dir
+            self.realpath, self.remote_host + ":" + self.remote_dir
         ]
 
         while True:
@@ -180,7 +181,7 @@ class RtorrentLowSpaceDriver(object):
         while True:
             try:
                 output = subprocess.check_output([
-                    "ssh", "kupukupu", "find", self.remote_dir, "-type", "f", "-print"
+                    "ssh", self.remote_host, "find", self.remote_dir, "-type", "f", "-print"
                 ])
                 remote_files = output.rstrip().split("\n")
 
