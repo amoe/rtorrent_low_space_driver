@@ -250,11 +250,13 @@ class RtorrentLowSpaceDriver(object):
     def start_torrent(self, infohash):
         while True:
             self.my_proxy.start(infohash)
-            time.sleep(0.5)
+            time.sleep(1)
             if self.my_proxy.is_active(infohash) == 1:
                 break
             else:
                 error("failed to resume torrent, retrying")
+                self.my_proxy.stop(infohash)
+                time.sleep(1)
 
     def _zero_out_file(self, path):
         open(path, 'w').close()
