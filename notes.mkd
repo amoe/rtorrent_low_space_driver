@@ -1,6 +1,7 @@
 NOTES
 =====
 
+* consider also resetting torrent throttle to a calculated value
 * watch over torrent directory
 * import subset into rtorrent
 * switch priority off for some files to fit subset in space

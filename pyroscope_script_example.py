@@ -65,6 +65,9 @@ class MyProxy(object):
     def get_directory(self, id_):
         return self.engine.d.get_directory(id_)
 
+    def is_active(self, id_):
+        return self.engine.d.is_active(id_)
+
 
 class RtorrentLowSpaceDriver(object):
     """rtorrent low space driver"""
@@ -245,7 +248,13 @@ class RtorrentLowSpaceDriver(object):
         self.my_proxy.update_priorities(self.infohash)
 
     def start_torrent(self, infohash):
-        self.my_proxy.start(infohash)
+        while True:
+            self.my_proxy.start(infohash)
+            time.sleep(0.5)
+            if self.my_proxy.is_active(infohash) == 1:
+                break
+            else:
+                error("failed to resume torrent, retrying")
 
     def _zero_out_file(self, path):
         open(path, 'w').close()
