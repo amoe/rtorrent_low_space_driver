@@ -10,6 +10,16 @@ import pprint
 import rtorrent_xmlrpc
 import tempfile
 import subprocess
+import shutil
+
+def splitter(data, pred):
+    yes, no = [], []
+    for d in data:
+        if pred(d):
+            yes.append(d)
+        else:
+            no.append(d)
+    return [yes, no]
 
 # Algorithm for this.
 
@@ -23,7 +33,7 @@ import subprocess
 # Can the total fit on the disk?
 
 class RtorrentLowSpaceDriver(object):
-    MANAGED_TORRENTS_DIRECTORY = "/home/amoe/download/torrents"
+    MANAGED_TORRENTS_DIRECTORY = "/home/amoe/dev/rtorrent_low_space_driver/managed"
     REMOTE_HOST = "kupukupu"
     REMOTE_PATH = "/mnt/spock/mirror2"
     SPACE_LIMIT = 3 * (2 ** 30)
@@ -39,35 +49,79 @@ class RtorrentLowSpaceDriver(object):
              full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
              t_info = libtorrent.torrent_info(full_path)
              hash_ = str(t_info.info_hash()).upper()
-             datum = {'torrent_path': full_path}
+             datum = {
+                 'torrent_path': full_path,
+                 'size': t_info.total_size(),
+                 'name': t_info.name()
+             }
              managed_torrents[hash_] = datum
 
 
         # Check for completed downloads
-        server = rtorrent_xmlrpc.SCGIServerProxy("scgi:///home/amoe/.rtorrent.sock")
-
-        rtorrent_completed_list = [
-            t.upper() for t in server.download_list()
-            if server.d.complete(t) == 1
-        ]
+        server = rtorrent_xmlrpc.SCGIServerProxy(
+            "scgi:///home/amoe/.rtorrent.sock"
+        )
 
 
-        for completed_torrent in rtorrent_completed_list:
-            # print "directory = ", server.d.get_directory(completed_torrent)
-            # print "directory base = ", server.d.get_directory_base(completed_torrent)
-            # print "loaded file = ", server.d.get_loaded_file(completed_torrent)
-            # print "base filename = ", server.d.get_base_filename(completed_torrent)
+        rt_complete, rt_incomplete = splitter(
+            server.download_list(), lambda t: server.d.complete(t) == 1
+        )
+
+        # Sync & remove complete torrents
+        for completed_torrent in rt_complete:
             managed_torrent = managed_torrents.get(completed_torrent)
             if managed_torrent:
+                info("Handling completed torrent: %s" % managed_torrent['name'])
                 base_path = server.d.get_base_path(completed_torrent)
                 self.sync_completed_path_to_remote(base_path)
                 server.d.erase(completed_torrent)
-                os.path.remove(managed_torrent['torrent_path'])
+                
+                if os.path.isdir(base_path):
+                    shutil.rmtree(base_path)
+                else:
+                    os.remove(base_path)
 
-            # now we know it's done.  so remove it from the list.
+                torrent_path = managed_torrent['torrent_path']
+                if os.path.exists(torrent_path):
+                    info("For some reason tied torrent existed.  Killing it.")
+                    os.remove(torrent_path)
+                else:
+                    info("Tied torrent file was already deleted by rtorrent.")
 
-            #print os.path.dirname(server.d.get_loaded_file(completed_torrent))
-            
+        # Count incomplete torrents
+        cumulative_incomplete_size = 0
+        for incomplete_torrent in rt_incomplete:
+            managed_torrent = managed_torrents.get(incomplete_torrent)
+            if managed_torrent:
+                cumulative_incomplete_size += managed_torrent['size']
+
+        info("Cumulative size of incomplete items was %d" % cumulative_incomplete_size)
+        effective_available_size = self.SPACE_LIMIT - cumulative_incomplete_size
+        info("Available size to load is %d", effective_available_size)
+
+        # Filter out the managed items that were already loaded
+        not_already_loaded = []
+        for k, v in managed_torrents.iteritems():
+            if k not in rt_incomplete and k not in rt_complete:
+                not_already_loaded.append(v)
+
+        # Pick the first set that will fit
+        managed_by_size = sorted(not_already_loaded, key=lambda t: t['size'])
+        this_list = []
+        total_size = 0
+
+        for torrent in managed_by_size:
+            if (total_size + torrent['size']) > effective_available_size:
+                break
+            this_list.append(torrent)
+            total_size += torrent['size']
+
+        info("Decided to load these torrents: %s" % pprint.pformat(this_list))
+
+        for torrent_to_load in this_list:
+            server.load_start(torrent_to_load['torrent_path'])
+
+        info("End.")
 
     def sync_completed_path_to_remote(self, source_path):
         cmd = [
@@ -84,39 +138,6 @@ class RtorrentLowSpaceDriver(object):
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
-
-        # list_of_torrents = []
-
-        # for torrent in os.listdir(self.MANAGED_TORRENTS_DIRECTORY):
-        #     full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
-        #     t_info = libtorrent.torrent_info(full_path)
-        #     hash_ = t_info.info_hash()
-
-        #     datum = {
-        #         'hash': t_info.info_hash(),
-        #         'size': t_info.total_size(),
-        #         'path': torrent,
-        #         'name': t_info.name(),
-        #     }
-        #     list_of_torrents.append(datum)
-
-
-        # new_list  =  sorted(list_of_torrents, key=lambda x: x['size'])
-
-        # this_list = []
-        # total_size = 0
-
-        # for torrent in new_list:
-        #     if (total_size + torrent['size']) > self.SPACE_LIMIT:
-        #         break
-        #     this_list.append(torrent)
-        #     total_size += torrent['size']
-
-        # pprint.pprint(this_list)
-        # print self.SPACE_LIMIT
-        # print total_size
-
-        info("End.")
         
     def initialize(self, args):
         parser = argparse.ArgumentParser()
