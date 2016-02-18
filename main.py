@@ -7,6 +7,7 @@ import argparse
 import libtorrent
 import os
 import pprint
+import rtorrent_xmlrpc
 
 # Algorithm for this.
 
@@ -28,34 +29,45 @@ class RtorrentLowSpaceDriver(object):
         
         info("Starting.")
 
-        list_of_torrents = []
+        # Check for completed downloads
+        server = rtorrent_xmlrpc.SCGIServerProxy("scgi:///home/amoe/.rtorrent.sock")
 
-        for torrent in os.listdir(self.MANAGED_TORRENTS_DIRECTORY):
-            full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
-            t_info = libtorrent.torrent_info(full_path)
-            datum = {
-                'hash': t_info.info_hash(),
-                'size': t_info.total_size(),
-                'path': torrent,
-                'name': t_info.name(),
-            }
-            list_of_torrents.append(datum)
+        rtorrent_completed_list = [
+            server.d.complete(t) == 1
+            for t in server.download_list()
+        ]
 
 
-        new_list  =  sorted(list_of_torrents, key=lambda x: x['size'])
+        # list_of_torrents = []
 
-        this_list = []
-        total_size = 0
+        # for torrent in os.listdir(self.MANAGED_TORRENTS_DIRECTORY):
+        #     full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
+        #     t_info = libtorrent.torrent_info(full_path)
+        #     hash_ = t_info.info_hash()
 
-        for torrent in new_list:
-            if (total_size + torrent['size']) > self.SPACE_LIMIT:
-                break
-            this_list.append(torrent)
-            total_size += torrent['size']
+        #     datum = {
+        #         'hash': t_info.info_hash(),
+        #         'size': t_info.total_size(),
+        #         'path': torrent,
+        #         'name': t_info.name(),
+        #     }
+        #     list_of_torrents.append(datum)
 
-        pprint.pprint(this_list)
-        print self.SPACE_LIMIT
-        print total_size
+
+        # new_list  =  sorted(list_of_torrents, key=lambda x: x['size'])
+
+        # this_list = []
+        # total_size = 0
+
+        # for torrent in new_list:
+        #     if (total_size + torrent['size']) > self.SPACE_LIMIT:
+        #         break
+        #     this_list.append(torrent)
+        #     total_size += torrent['size']
+
+        # pprint.pprint(this_list)
+        # print self.SPACE_LIMIT
+        # print total_size
 
         info("End.")
         
