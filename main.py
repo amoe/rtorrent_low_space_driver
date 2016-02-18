@@ -6,6 +6,7 @@ from logging import debug, info
 import argparse
 import libtorrent
 import os
+import pprint
 
 # Algorithm for this.
 
@@ -20,6 +21,7 @@ import os
 
 class RtorrentLowSpaceDriver(object):
     MANAGED_TORRENTS_DIRECTORY = "/home/amoe/download/torrents"
+    SPACE_LIMIT = 3 * (2 ** 30)
 
     def run(self, args):
         ns = self.initialize(args)
@@ -42,8 +44,18 @@ class RtorrentLowSpaceDriver(object):
 
         new_list  =  sorted(list_of_torrents, key=lambda x: x['size'])
 
-        for blah in new_list:
-            print blah['name']
+        this_list = []
+        total_size = 0
+
+        for torrent in new_list:
+            if (total_size + torrent['size']) > self.SPACE_LIMIT:
+                break
+            this_list.append(torrent)
+            total_size += torrent['size']
+
+        pprint.pprint(this_list)
+        print self.SPACE_LIMIT
+        print total_size
 
         info("End.")
         
