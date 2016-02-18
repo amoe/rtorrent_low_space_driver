@@ -8,6 +8,8 @@ import libtorrent
 import os
 import pprint
 import rtorrent_xmlrpc
+import tempfile
+import subprocess
 
 # Algorithm for this.
 
@@ -22,6 +24,8 @@ import rtorrent_xmlrpc
 
 class RtorrentLowSpaceDriver(object):
     MANAGED_TORRENTS_DIRECTORY = "/home/amoe/download/torrents"
+    REMOTE_HOST = "kupukupu"
+    REMOTE_PATH = "/mnt/spock/mirror2"
     SPACE_LIMIT = 3 * (2 ** 30)
 
     def run(self, args):
@@ -29,13 +33,56 @@ class RtorrentLowSpaceDriver(object):
         
         info("Starting.")
 
+        # make lookup table for torrents, should be a set
+        managed_torrents = {}
+        for torrent in os.listdir(self.MANAGED_TORRENTS_DIRECTORY):
+             full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
+             t_info = libtorrent.torrent_info(full_path)
+             hash_ = str(t_info.info_hash()).upper()
+             datum = {'torrent_path': full_path}
+             managed_torrents[hash_] = datum
+
+
         # Check for completed downloads
         server = rtorrent_xmlrpc.SCGIServerProxy("scgi:///home/amoe/.rtorrent.sock")
 
         rtorrent_completed_list = [
-            server.d.complete(t) == 1
-            for t in server.download_list()
+            t.upper() for t in server.download_list()
+            if server.d.complete(t) == 1
         ]
+
+
+        for completed_torrent in rtorrent_completed_list:
+            # print "directory = ", server.d.get_directory(completed_torrent)
+            # print "directory base = ", server.d.get_directory_base(completed_torrent)
+            # print "loaded file = ", server.d.get_loaded_file(completed_torrent)
+            # print "base filename = ", server.d.get_base_filename(completed_torrent)
+            managed_torrent = managed_torrents.get(completed_torrent)
+            if managed_torrent:
+                base_path = server.d.get_base_path(completed_torrent)
+                self.sync_completed_path_to_remote(base_path)
+                server.d.erase(completed_torrent)
+                os.path.remove(managed_torrent['torrent_path'])
+
+            # now we know it's done.  so remove it from the list.
+
+            #print os.path.dirname(server.d.get_loaded_file(completed_torrent))
+            
+
+    def sync_completed_path_to_remote(self, source_path):
+        cmd = [
+            "rsync", "-aPv", source_path, 
+            self.REMOTE_HOST + ":" + self.REMOTE_PATH
+        ]
+
+        while True:
+            try:
+                info("running command: %s", ' '.join(cmd))
+                subprocess.check_call(cmd)
+                return
+            except subprocess.CalledProcessError, e:
+                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
+                time.sleep(60)
 
 
         # list_of_torrents = []
