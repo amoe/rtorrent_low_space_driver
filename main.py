@@ -26,11 +26,24 @@ class RtorrentLowSpaceDriver(object):
         
         info("Starting.")
 
+        list_of_torrents = []
+
         for torrent in os.listdir(self.MANAGED_TORRENTS_DIRECTORY):
             full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
             t_info = libtorrent.torrent_info(full_path)
-            print t_info.info_hash(), ":", t_info.total_size()
+            datum = {
+                'hash': t_info.info_hash(),
+                'size': t_info.total_size(),
+                'path': torrent,
+                'name': t_info.name(),
+            }
+            list_of_torrents.append(datum)
 
+
+        new_list  =  sorted(list_of_torrents, key=lambda x: x['size'])
+
+        for blah in new_list:
+            print blah['name']
 
         info("End.")
         
