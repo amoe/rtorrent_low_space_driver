@@ -18,7 +18,7 @@ Run it from cron with a lock.  Every hour is quite appropriate.
 Although the transfer will often take longer, so the lock is essential
 if you don't want to fill up your process table with rsync instances.
 
-0 * * * *  lckdo /var/lock/rtorrent_low_space_driver.lock /usr/local/bin/rtorrent-low-space-driver
+    0 * * * *  lckdo /var/lock/rtorrent_low_space_driver.lock /usr/local/bin/rtorrent-low-space-driver
 
 Many thanks to Roger Que for the SCGI module, and the authors of
 Pyroscope for a bit of inspiration.
