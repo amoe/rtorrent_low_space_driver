@@ -26,7 +26,7 @@ class RtorrentLowSpaceDriver(object):
     REMOTE_HOST = "localhost"
     REMOTE_PATH = "/home/amoe/mymirror"
     SPACE_LIMIT = 3 * (2 ** 30)
-    REQUIRED_RATIO = 0.0
+    REQUIRED_RATIO = 1.0
 
     server = None
     
