@@ -2,7 +2,7 @@
 
 import sys
 import logging
-from logging import debug, info
+from logging import debug, info, error
 import argparse
 import os
 import rtorrent_xmlrpc
@@ -45,19 +45,24 @@ class RtorrentLowSpaceDriver(object):
             info("Detected incomplete & already loaded large torrent.  Switching to large strategy.")
             info("Torrent is %s" % pformat(large_torrent))
             self.handle_large_torrent_strategy(large_torrent)
+            info("Large strategy completed successfully.")
         else:
             info("Using small torrents strategy per default.")
             load_candidates, load_choices = self.handle_small_torrents_strategy()
             info("Small torrents strategy finished.")
             if not load_choices:
                 if load_candidates:
-                    info("Large torrents blocked by small strategy.  Switching to large strategy.")
-                    by_size = sorted(load_candidates, lambda t: t['size'])
+                    if self.get_incomplete_managed_torrents():
+                        info("Waiting for incomplete torrents to complete before switching to large strategy.")
+                    else:
+                        info("Large torrents blocked by small strategy.  Switching to large strategy.")
+                        by_size = sorted(load_candidates, lambda t: t['size'])
                     
 
-                    # slice off just the first item
-                    self.load_torrents(by_size[:1])
-                    self.handle_large_torrent_strategy(by_size[0])
+                        # slice off just the first item
+                        self.load_torrents(by_size[:1])
+                        self.handle_large_torrent_strategy(by_size[0])
+                        info("First run of large strategy completed successfully.")
                 else:
                     info("No candidates to load.  Either all torrents are already loaded, or there are no torrents in the managed directory.")
                     info("For you to verify, said managed torrent list is %s" % pformat(self.build_managed_torrents_list()))
@@ -70,15 +75,7 @@ class RtorrentLowSpaceDriver(object):
     ## SMALL TORRENT STRATEGY
 
     def check_for_large_managed_torrents(self):
-        # XXX: we build this list twice
-        managed_torrents = self.build_managed_torrents_list()
-        rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
-        
-        # XXX: is rt_incomplete correct here?
-        managed_torrents_in_client = [
-            managed_torrents[t] for t in rt_incomplete
-        ]
-        
+        managed_torrents_in_client = self.get_incomplete_managed_torrents()
         large_managed_torrents = [
             t for t in managed_torrents_in_client
             if t['size'] > self.SPACE_LIMIT
@@ -91,6 +88,17 @@ class RtorrentLowSpaceDriver(object):
             return large_managed_torrents[0]
         else:
             return None
+
+    def get_incomplete_managed_torrents(self):
+        managed_torrents = self.build_managed_torrents_list()
+        rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
+
+        managed_torrents_in_client = [
+            managed_torrents[t] for t in rt_incomplete
+        ]
+        
+        return managed_torrents_in_client
+
 
     def handle_small_torrents_strategy(self):
         managed_torrents = self.build_managed_torrents_list()
@@ -241,7 +249,7 @@ class RtorrentLowSpaceDriver(object):
         info("Locally completed files: %s" % pformat(local_completed_files))
 
         self.sync_completed_files_to_remote(realpath, local_completed_files)
-        remote_completed_list = self.scan_remote_for_completed_list()
+        remote_completed_list = self.scan_remote_for_completed_list(realpath)
 
         info("Remotely completed files: %s" % pformat(remote_completed_list))
 
@@ -285,9 +293,14 @@ class RtorrentLowSpaceDriver(object):
             for path in completed_files:
                 transfer_list.write(path + "\n")
         
+        remote_path = "%s:%s" \
+          % (self.REMOTE_HOST, self.get_remote_path(realpath))
+
+        # slash on the end of the local path makes sure that we sync to remote
+        # path, rather than creating a subdir
         cmd = [
             "rsync", "-aPv", "--files-from=" + tmpfile_path,
-            realpath, self.REMOTE_HOST + ":" + self.REMOTE_PATH
+            realpath + "/", remote_path
         ]
 
         while True:
@@ -300,17 +313,22 @@ class RtorrentLowSpaceDriver(object):
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
+    def get_remote_path(self, realpath):
+        return os.path.join(self.REMOTE_PATH, os.path.basename(realpath))
 
-    def scan_remote_for_completed_list(self):
+
+    def scan_remote_for_completed_list(self, realpath):
+        remote_path = self.get_remote_path(realpath)
+
         while True:
             try:
                 output = subprocess.check_output([
-                    "ssh", self.REMOTE_HOST, "find", self.REMOTE_PATH, "-type", "f", "-print"
+                    "ssh", self.REMOTE_HOST, "find", remote_path, "-type", "f", "-print"
                 ])
                 remote_files = output.rstrip().split("\n")
 
                 return [
-                    x[len(self.REMOTE_PATH + "/"):] for x in remote_files
+                    x[len(remote_path + "/"):] for x in remote_files
                     if x.startswith(self.REMOTE_PATH)
                 ]
             except subprocess.CalledProcessError, e:
