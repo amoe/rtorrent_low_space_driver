@@ -6,9 +6,11 @@ from logging import debug, info
 import argparse
 import os
 import rtorrent_xmlrpc
-import pprint
+from pprint import pformat
 import libtorrent
 import subprocess
+import tempfile
+import time
 
 def splitter(data, pred):
     yes, no = [], []
@@ -37,13 +39,12 @@ class RtorrentLowSpaceDriver(object):
             "scgi:///home/amoe/.rtorrent.sock"
         )
 
-
         large_torrent = self.check_for_large_managed_torrents()
 
         if large_torrent is not None:
             info("Detected incomplete & already loaded large torrent.  Switching to large strategy.")
-            info("Torrent is %s" + pprint.pformat(large_torrent))
-            self.handle_large_torrent_strategy(large_torrent_infohash)
+            info("Torrent is %s" % pformat(large_torrent))
+            self.handle_large_torrent_strategy(large_torrent)
         else:
             info("Using small torrents strategy per default.")
             load_candidates, load_choices = self.handle_small_torrents_strategy()
@@ -51,12 +52,15 @@ class RtorrentLowSpaceDriver(object):
             if not load_choices:
                 if load_candidates:
                     info("Large torrents blocked by small strategy.  Switching to large strategy.")
-                    large_torrent = sorted(load_candidates, lambda t: t['size'])
-                    self.load_torrents(large_torrent[0])
-                    self.handle_large_torrent_strategy()
+                    by_size = sorted(load_candidates, lambda t: t['size'])
+                    
+
+                    # slice off just the first item
+                    self.load_torrents(by_size[:1])
+                    self.handle_large_torrent_strategy(by_size[0])
                 else:
                     info("No candidates to load.  Either all torrents are already loaded, or there are no torrents in the managed directory.")
-                    info("For you to verify, said managed torrent list is %s" % pprint.pformat(self.build_managed_torrents_list()))
+                    info("For you to verify, said managed torrent list is %s" % pformat(self.build_managed_torrents_list()))
                     info("Now quietly exiting successfully.")
             else:
                 info("Small strategy succeeded.  See you next time!")
@@ -108,7 +112,7 @@ class RtorrentLowSpaceDriver(object):
             load_candidates, effective_space
         )
 
-        info("Decided to load these torrents: %s" % pprint.pformat(load_choices))
+        info("Decided to load these torrents: %s" % pformat(load_choices))
         self.load_torrents(load_choices)
 
         return load_candidates, load_choices
@@ -224,30 +228,162 @@ class RtorrentLowSpaceDriver(object):
 
     # The large torrent strategy always works on a single torrent at a time.
     # This has to already have been loaded.
-    def handle_large_torrent_strategy(self, infohash):
-        realpath = self.my_proxy.get_directory(infohash)
+    def handle_large_torrent_strategy(self, torrent):
+        infohash = torrent['hash']
 
-        info("Managing torrent: %s" % realpath)
+        realpath = self.server.d.get_directory(infohash)
+
+        info("Managing large torrent: %s" % torrent['name'])
 
         self.stop_torrent(infohash)
-        local_completed_files = self.check_for_local_completed_files()
+        local_completed_files = self.check_for_local_completed_files(infohash)
 
         info("Locally completed files: %s" % pformat(local_completed_files))
 
-        self.sync_completed_files_to_remote(local_completed_files)
+        self.sync_completed_files_to_remote(realpath, local_completed_files)
         remote_completed_list = self.scan_remote_for_completed_list()
 
         info("Remotely completed files: %s" % pformat(remote_completed_list))
 
-        self.remove_completed_files(local_completed_files)
-        self.set_all_files_to_zero_priority()
-        next_group = self.generate_next_group(remote_completed_list)
+        self.remove_completed_files(realpath, local_completed_files)
+        self.set_all_files_to_zero_priority(infohash)
+        next_group = self.generate_next_group(infohash, remote_completed_list)
 
-        self.set_priority([x['id'] for x in next_group], 1)
+        self.set_priority(infohash, [x['id'] for x in next_group], 1)
 
         # NB: hash check?
         self.start_torrent(infohash)
+
+    # returns list of locally completed files as IDs
+    def check_for_local_completed_files(self, infohash):
+        completed_list = []
         
+        size_files = self.server.d.get_size_files(infohash)
+
+        for i in range(size_files):
+            id_ = "%s:f%d" % (infohash, i)
+            done = self.server.f.get_completed_chunks(id_)
+            total = self.server.f.get_size_chunks(id_)
+            priority = self.server.f.get_priority(id_)
+
+            if done == total and priority > 0:
+                completed_list.append(self.server.f.get_path(id_))
+                
+        return completed_list
+
+    def stop_torrent(self, infohash):
+        self.server.d.stop(infohash)
+
+    def sync_completed_files_to_remote(self, realpath, completed_files):
+        tmpfile_path = None
+        
+        with tempfile.NamedTemporaryFile(
+            suffix=".lst", prefix="transfer_list-", delete=False
+        ) as transfer_list:
+            tmpfile_path = transfer_list.name
+
+            for path in completed_files:
+                transfer_list.write(path + "\n")
+        
+        cmd = [
+            "rsync", "-aPv", "--files-from=" + tmpfile_path,
+            realpath, self.REMOTE_HOST + ":" + self.REMOTE_PATH
+        ]
+
+        while True:
+            try:
+                info("running command: %s", ' '.join(cmd))
+                subprocess.check_call(cmd)
+                os.remove(transfer_list.name)
+                return
+            except subprocess.CalledProcessError, e:
+                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
+                time.sleep(60)
+
+
+    def scan_remote_for_completed_list(self):
+        while True:
+            try:
+                output = subprocess.check_output([
+                    "ssh", self.REMOTE_HOST, "find", self.REMOTE_PATH, "-type", "f", "-print"
+                ])
+                remote_files = output.rstrip().split("\n")
+
+                return [
+                    x[len(self.REMOTE_PATH + "/"):] for x in remote_files
+                    if x.startswith(self.REMOTE_PATH)
+                ]
+            except subprocess.CalledProcessError, e:
+                error("failed to read remote, retrying.  exception was '%s'" % e)
+                time.sleep(60)
+
+    def remove_completed_files(self, realpath, completed_files):
+        for path in completed_files:
+            self._zero_out_file(os.path.join(realpath, path))
+        subprocess.check_call(["sync"])
+
+    def _zero_out_file(self, path):
+        open(path, 'w').close()
+
+
+    def set_all_files_to_zero_priority(self, infohash):
+        id_list = []
+        file_len = self.server.d.get_size_files(infohash)
+        
+        for i in range(file_len):
+            id_list.append("%s:f%d" % (infohash, i))
+
+        self.set_priority(infohash, id_list, 0)
+
+    def set_priority(self, infohash, ids, priority):
+        for id_ in ids:
+            self.server.f.set_priority(id_, priority)
+        self.server.d.update_priorities(infohash)
+
+    def generate_next_group(self, infohash, exclude_list):
+        file_len = self.server.d.get_size_files(infohash)
+        file_list = []
+        for i in range(file_len):
+            id_ = "%s:f%d" % (infohash, i)
+            size = self.server.f.get_size_bytes(id_)
+            path = self.server.f.get_path(id_)
+            datum = {
+                'id': id_, 'size': size, 'path': path
+            }
+            file_list.append(datum)
+
+        # filter out items existing on remote
+        filtered_items = [x for x in file_list if x['path'] not in exclude_list]
+
+        # sort items by size
+        filtered_items.sort(key=lambda x: x['size'])
+
+        # pick until we hit the space limit
+        size_so_far = 0
+        group = []
+        for file_ in filtered_items:
+            this_size = file_['size']
+            if (size_so_far + this_size) > self.SPACE_LIMIT:
+                break
+            
+            size_so_far += this_size
+            group.append(file_)
+
+        return group
+
+    def start_torrent(self, infohash):
+        while True:
+            self.server.d.start(infohash)
+            time.sleep(1)
+            if self.server.d.is_active(infohash) == 1:
+                break
+            else:
+                error("failed to resume torrent, retrying")
+                self.server.d.stop(infohash)
+                time.sleep(1)
+
+        
+
     def initialize(self, args):
         parser = argparse.ArgumentParser()
 
