@@ -37,6 +37,7 @@ class RtorrentLowSpaceDriver(object):
     REMOTE_HOST = "kupukupu"
     REMOTE_PATH = "/mnt/spock/mirror2"
     SPACE_LIMIT = 3 * (2 ** 30)
+    REQUIRED_RATIO = 1.0
 
     def run(self, args):
         ns = self.initialize(args)
@@ -72,6 +73,12 @@ class RtorrentLowSpaceDriver(object):
             managed_torrent = managed_torrents.get(completed_torrent)
             if managed_torrent:
                 info("Handling completed torrent: %s" % managed_torrent['name'])
+
+                ratio = server.d.get_ratio(completed_torrent)
+                if ratio < self.REQUIRED_RATIO:
+                    info("Torrent is completed but not seeded to required ratio.  Skipping.")
+                    continue
+
                 base_path = server.d.get_base_path(completed_torrent)
                 self.sync_completed_path_to_remote(base_path)
                 server.d.erase(completed_torrent)
