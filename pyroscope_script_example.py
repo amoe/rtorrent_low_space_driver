@@ -136,6 +136,22 @@ class RtorrentLowSpaceDriver(object):
     def stop_torrent(self, infohash):
         self.my_proxy.stop(infohash)
 
+    # returns list of locally completed files as IDs
+    def check_for_local_completed_files(self):
+        completed_list = []
+        
+        size_files = self.my_proxy.get_size_files(self.infohash)
+
+        for i in range(size_files):
+            id_ = "%s:f%d" % (self.infohash, i)
+            done = self.my_proxy.get_completed_chunks(id_)
+            total = self.my_proxy.get_size_chunks(id_)
+            priority = self.my_proxy.get_priority(id_)
+
+            if done == total and priority > 0:
+                completed_list.append(self.my_proxy.get_path(id_))
+                
+        return completed_list
 
     def sync_completed_files_to_remote(self, completed_files):
         tmpfile_path = None
