@@ -223,7 +223,7 @@ class RtorrentLowSpaceDriver(object):
 
         while True:
             try:
-                info("running command: %s", ' '.join(cmd))
+                info("running command: %s" % pformat(cmd))
                 subprocess.check_call(cmd)
                 return
             except subprocess.CalledProcessError, e:
