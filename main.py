@@ -11,6 +11,7 @@ import libtorrent
 import subprocess
 import tempfile
 import time
+import shutil
 
 def splitter(data, pred):
     yes, no = [], []
