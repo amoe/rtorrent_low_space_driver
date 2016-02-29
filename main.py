@@ -108,8 +108,14 @@ class RtorrentLowSpaceDriver(object):
             [managed_torrents[t] for t in rt_complete
              if t in managed_torrents]
         )
+        
+        # Update the list of torrents to account for removals.  Effective
+        # space should consider both completed and incomplete torrents,
+        # because torrents that didn't seed yet sit around consuming space
+        # for quite a while.
+        rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
         effective_space = self.compute_effective_available_space(
-            [managed_torrents[t] for t in rt_incomplete
+            [managed_torrents[t] for t in (rt_incomplete + rt_complete)
              if t in managed_torrents]
         )
         info("Available size to load is %d", effective_space)
@@ -175,14 +181,17 @@ class RtorrentLowSpaceDriver(object):
             else:
                 info("Tied torrent file was already deleted by rtorrent.")
     
+    # "Cumulative used size" here means the actual size used by completed
+    # torrents, plus the size projected to be used by the currently loaded
+    # incomplete torrents.
     def compute_effective_available_space(self, torrent_list):
         # Count incomplete torrents
-        cumulative_incomplete_size = 0
-        for incomplete_torrent in torrent_list:
-            cumulative_incomplete_size += incomplete_torrent['size']
+        cumulative_used_size = 0
+        for torrent in torrent_list:
+            cumulative_used_size += torrent['size']
 
-        info("Cumulative size of incomplete items was %d" % cumulative_incomplete_size)
-        effective_available_size = self.SPACE_LIMIT - cumulative_incomplete_size
+        info("Cumulative used and incomplete size was %d" % cumulative_used_size)
+        effective_available_size = self.SPACE_LIMIT - cumulative_used_size
 
         return effective_available_size
 
