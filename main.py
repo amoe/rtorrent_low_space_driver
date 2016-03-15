@@ -5,6 +5,7 @@ import logging
 from logging import debug, info, error
 import argparse
 import os
+import os.path
 import rtorrent_xmlrpc
 from pprint import pformat
 import libtorrent
@@ -12,6 +13,7 @@ import subprocess
 import tempfile
 import time
 import shutil
+import ConfigParser
 
 def splitter(data, pred):
     yes, no = [], []
@@ -23,12 +25,6 @@ def splitter(data, pred):
     return [yes, no]
 
 class RtorrentLowSpaceDriver(object):
-    MANAGED_TORRENTS_DIRECTORY = "/home/amoe/dev/rtorrent_low_space_driver/managed"
-    REMOTE_HOST = "localhost"
-    REMOTE_PATH = "/home/amoe/mymirror"
-    SPACE_LIMIT = 3 * (2 ** 30)
-    REQUIRED_RATIO = 1.0
-
     server = None
     
     def run(self, args):
@@ -36,9 +32,17 @@ class RtorrentLowSpaceDriver(object):
 
         info("Starting.")
 
-        self.server = rtorrent_xmlrpc.SCGIServerProxy(
-            "scgi:///home/amoe/.rtorrent.sock"
-        )
+
+        cfg = ConfigParser.ConfigParser()
+        cfg.read(os.path.expanduser("~/.rtorrent_low_space_driver.cf"))
+        self.MANAGED_TORRENTS_DIRECTORY = cfg.get('main', 'managed_torrents_directory')
+        self.REMOTE_HOST = cfg.get('main', 'remote_host')
+        self.REMOTE_PATH = cfg.get('main', 'remote_path')
+        self.SPACE_LIMIT = cfg.getint('main', 'space_limit')
+        self.REQUIRED_RATIO = cfg.getfloat('main', 'required_ratio')
+        self.SOCKET_URL = cfg.get('main', 'socket_url')
+
+        self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
 
         large_torrent = self.check_for_large_managed_torrents()
 
