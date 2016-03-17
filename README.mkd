@@ -14,6 +14,29 @@ space calculations.  Once no more torrents will fit, it downloads
 individual files within torrents and syncs these as well.  Only one
 torrent can be handled in this mode.
 
+Your rtorrent will need to be configured for XMLRPC access over SCGI.  To enable
+this, add the following line to `~/.rtorrent.rc`:
+
+    network.scgi.open_local = /home/amoe/.rtorrent.sock
+
+Obviously you can put the socket file wherever you would like.
+
+
+You need to create a config file under `~/.rtorrent_low_space_driver.cf`.  Base
+it on this template:
+
+	[main]
+	managed_torrents_directory = /home/amoe/managed_torrents
+	remote_host = somehost
+	remote_path = /home/amoe/place-with-space
+	space_limit = 3221225472
+	required_ratio = 1.0
+	socket_url = scgi:///home/amoe/.rtorrent.sock
+
+All paths need to be absolute.  The value for `space_limit` is in bytes.  The
+value for `socket_url` needs to match the value in `.rtorrent.rc`, but with the
+`scgi://` prefix.
+
 Run it from cron with a lock.  Every hour is quite appropriate.
 Although the transfer will often take longer, so the lock is essential
 if you don't want to fill up your process table with rsync instances.
