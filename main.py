@@ -165,11 +165,11 @@ class RtorrentLowSpaceDriver(object):
             info("Handling completed torrent: %s" % completed_torrent['name'])
 
             ratio = self.server.d.get_ratio(infohash)
+            info("Ratio of completed torrent was determined as %f" % ratio)
+
             if ratio < self.REQUIRED_RATIO:
                 info("Torrent is completed but not seeded to required ratio.  Skipping.")
                 continue
-            else:
-                info("Ratio of completed torrent was determined as %f" % ratio)
 
             base_path = self.server.d.get_base_path(infohash)
             self.sync_completed_path_to_remote(base_path)
