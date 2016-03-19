@@ -100,6 +100,7 @@ class RtorrentLowSpaceDriver(object):
 
         managed_torrents_in_client = [
             managed_torrents[t] for t in rt_incomplete
+            if t in managed_torrents
         ]
         
         return managed_torrents_in_client
