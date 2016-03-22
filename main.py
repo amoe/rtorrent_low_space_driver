@@ -61,7 +61,7 @@ class RtorrentLowSpaceDriver(object):
                         info("Waiting for incomplete torrents to complete before switching to large strategy.")
                     else:
                         info("Large torrents blocked by small strategy.  Switching to large strategy.")
-                        by_size = sorted(load_candidates, lambda t: t['size'])
+                        by_size = sorted(load_candidates, key=lambda t: t['size'])
                     
 
                         # slice off just the first item
