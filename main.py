@@ -99,7 +99,7 @@ class RtorrentLowSpaceDriver(object):
         rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
 
         for t in rt_complete:
-            ratio = self.server.d.get_ratio(t['hash'])
+            ratio = self.server.d.get_ratio(t)
             info("Scanned ratio as %f" % ratio)
 
             if ratio < self.REQUIRED_RATIO:
