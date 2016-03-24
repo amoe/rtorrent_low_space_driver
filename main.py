@@ -14,6 +14,7 @@ import tempfile
 import time
 import shutil
 import ConfigParser
+import pipes
 
 def splitter(data, pred):
     yes, no = [], []
@@ -339,8 +340,11 @@ class RtorrentLowSpaceDriver(object):
 
         while True:
             try:
+                # remote path must be quoted, lest it be interpreted wrongly
+                # by the shell on the server side.
                 output = subprocess.check_output([
-                    "ssh", self.REMOTE_HOST, "find", remote_path, "-type", "f", "-print"
+                    "ssh", self.REMOTE_HOST, "find", pipes.quote(remote_path),
+                    "-type", "f", "-print"
                 ])
                 remote_files = output.rstrip().split("\n")
 
