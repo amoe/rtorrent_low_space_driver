@@ -58,8 +58,8 @@ class RtorrentLowSpaceDriver(object):
             info("Small torrents strategy finished.")
             if not load_choices:
                 if load_candidates:
-                    if self.get_incomplete_managed_torrents():
-                        info("Waiting for incomplete torrents to complete before switching to large strategy.")
+                    if self.get_incomplete_managed_torrents() or self.insufficiently_seeded_managed_torrents_exist():
+                        info("Waiting for incomplete torrents to complete and seed before switching to large strategy.")
                     else:
                         info("Large torrents blocked by small strategy.  Switching to large strategy.")
                         by_size = sorted(load_candidates, key=lambda t: t['size'])
@@ -94,6 +94,25 @@ class RtorrentLowSpaceDriver(object):
             return large_managed_torrents[0]
         else:
             return None
+
+    def insufficiently_seeded_managed_torrents_exist(self):
+        rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
+
+        for t in rt_complete:
+            ratio = self.server.d.get_ratio(t['hash'])
+            info("Scanned ratio as %f" % ratio)
+
+            if ratio < self.REQUIRED_RATIO:
+                info("Determined that insufficiently seeded torrents exist")
+                return True
+
+        # It's weird, because by the stage this is called, we should have 
+        # already synced and removed them.
+        # Which kind of begs the question as to why this method exists, but
+        # we're going to ignore that question for now.
+        info("Sufficiently seeded torrents exists, which tbh is kind of weird.")
+        return False
+
 
     def get_incomplete_managed_torrents(self):
         managed_torrents = self.build_managed_torrents_list()
