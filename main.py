@@ -99,7 +99,7 @@ class RtorrentLowSpaceDriver(object):
         rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
 
         for t in rt_complete:
-            ratio = self.server.d.get_ratio(t)
+            ratio = self.get_ratio_of_torrent(t)
             info("Scanned ratio as %f" % ratio)
 
             if ratio < self.REQUIRED_RATIO:
@@ -185,7 +185,7 @@ class RtorrentLowSpaceDriver(object):
             infohash = completed_torrent['hash']
             info("Handling completed torrent: %s" % completed_torrent['name'])
 
-            ratio = self.server.d.get_ratio(infohash)
+            ratio = self.get_ratio_of_torrent(infohash)
             info("Ratio of completed torrent was determined as %f" % ratio)
 
             if ratio < self.REQUIRED_RATIO:
@@ -440,6 +440,12 @@ class RtorrentLowSpaceDriver(object):
                 self.server.d.stop(infohash)
                 time.sleep(1)
 
+    # For some reason the XMLRPC interface returns the ratio as an i8, so
+    # convert it to the more regular floating point ratio.
+    def get_ratio_of_torrent(self, infohash):
+        ratio = self.server.d.get_ratio(t)
+        float_ratio = ratio / 1000.0
+        return float_ratio
         
 
     def initialize(self, args):
