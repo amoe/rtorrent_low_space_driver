@@ -443,7 +443,7 @@ class RtorrentLowSpaceDriver(object):
     # For some reason the XMLRPC interface returns the ratio as an i8, so
     # convert it to the more regular floating point ratio.
     def get_ratio_of_torrent(self, infohash):
-        ratio = self.server.d.get_ratio(t)
+        ratio = self.server.d.get_ratio(infohash)
         float_ratio = ratio / 1000.0
         return float_ratio
         
