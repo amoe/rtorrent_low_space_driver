@@ -347,7 +347,7 @@ class RtorrentLowSpaceDriver(object):
             tmpfile_path = transfer_list.name
 
             for path in completed_files:
-                transfer_list.write(path + "\n")
+                transfer_list.write(path.encode('utf8') + "\n")
         
         remote_path = "%s:%s" \
           % (self.REMOTE_HOST, self.get_remote_path(realpath))
