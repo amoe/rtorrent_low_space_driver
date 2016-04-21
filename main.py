@@ -330,6 +330,8 @@ class RtorrentLowSpaceDriver(object):
                     "ssh", self.REMOTE_HOST, "mkdir", "-p", 
                     pipes.quote(remote_path)
                 ])
+
+                return
             except subprocess.CalledProcessError, e:
                 error("failed to read remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
