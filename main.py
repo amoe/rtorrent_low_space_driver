@@ -319,7 +319,24 @@ class RtorrentLowSpaceDriver(object):
     def stop_torrent(self, infohash):
         self.server.d.stop(infohash)
 
+    def maybe_create_directory_on_remote(self, realpath):
+        remote_path = self.get_remote_path(realpath)
+
+        while True:
+            try:
+                # remote path must be quoted, lest it be interpreted wrongly
+                # by the shell on the server side.
+                subprocess.check_call([
+                    "ssh", self.REMOTE_HOST, "mkdir", "-p", 
+                    pipes.quote(remote_path)
+                ])
+            except subprocess.CalledProcessError, e:
+                error("failed to read remote, retrying.  exception was '%s'" % e)
+                time.sleep(60)
+
     def sync_completed_files_to_remote(self, realpath, completed_files):
+        self.maybe_create_directory_on_remote(realpath)
+
         tmpfile_path = None
         
         with tempfile.NamedTemporaryFile(
