@@ -350,7 +350,7 @@ class RtorrentLowSpaceDriver(object):
                 transfer_list.write(path.encode('utf8') + "\n")
         
         remote_path = "%s:%s" \
-          % (self.REMOTE_HOST, self.get_remote_path(realpath))
+          % (self.REMOTE_HOST, pipes.quote(self.get_remote_path(realpath)))
 
         # slash on the end of the local path makes sure that we sync to remote
         # path, rather than creating a subdir
