@@ -356,7 +356,7 @@ class RtorrentLowSpaceDriver(object):
         # path, rather than creating a subdir
         cmd = [
             "rsync", "-aPv", "--files-from=" + tmpfile_path,
-            realpath + "/", remote_path
+            realpath + "/", pipes.quote(remote_path)
         ]
 
         while True:
