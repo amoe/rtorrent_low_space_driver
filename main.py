@@ -400,7 +400,7 @@ class RtorrentLowSpaceDriver(object):
         subprocess.check_call(["sync"])
 
     def _zero_out_file(self, path):
-        open(path, 'w').close()
+        open(path.encode('utf8'), 'w').close()
 
 
     def set_all_files_to_zero_priority(self, infohash):
