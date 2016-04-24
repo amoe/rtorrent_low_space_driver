@@ -384,6 +384,11 @@ class RtorrentLowSpaceDriver(object):
                     "ssh", self.REMOTE_HOST, "find", pipes.quote(remote_path),
                     "-type", "f", "-print"
                 ])
+
+                # Decode all output immediately and split it, remember that
+                # rtorrent is returning unicode strings to us so we need
+                # to create unicode strings so that they can be compared
+                # to the list of locally completed files.
                 remote_files = output.decode('UTF-8').rstrip().split("\n")
 
                 return [
