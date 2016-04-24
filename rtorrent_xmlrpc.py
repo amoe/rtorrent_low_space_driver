@@ -88,8 +88,14 @@ class SCGITransport(xmlrpc.client.Transport):
     def single_request(self, host, handler, request_body, verbose=0):
         # Add SCGI headers to the request.
         headers = {'CONTENT_LENGTH': str(len(request_body)), 'SCGI': '1'}
+
+        # NB: For some reason these headers need to be in this exact order,
+        # hence the below call to sorted() -- which sorts by key.
+        # Not sure exactly why, can be a bug in either this code or rtorrent
+        # xmlrpc handling code.  But this bug only occurs in python 3 for
+        # some reason that must be bizarre.
         header = '\x00'.join(
-            ('%s\x00%s' % item for item in headers.items())
+            ('%s\x00%s' % item for item in sorted(headers.items()))
         ) + '\x00'
         header = '%d:%s' % (len(header), header)
         request_body = '%s,%s' % (header, request_body)
@@ -108,7 +114,9 @@ class SCGITransport(xmlrpc.client.Transport):
                 sock.connect(handler)
             
             self.verbose = verbose
-            
+
+
+#            print(repr(request_body))
             sock.send(bytes(request_body, 'UTF-8'))
             return self.parse_response(sock.makefile())
         finally:
@@ -126,7 +134,7 @@ class SCGITransport(xmlrpc.client.Transport):
             response_body += data
         
         # Remove SCGI headers from the response.
-        print(repr(response_body))
+#        print(repr(response_body))
         response_header, response_body = re.split(
             r'\n\s*?\n', response_body, maxsplit=1
         )
