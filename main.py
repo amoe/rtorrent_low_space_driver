@@ -384,11 +384,11 @@ class RtorrentLowSpaceDriver(object):
                     "ssh", self.REMOTE_HOST, "find", pipes.quote(remote_path),
                     "-type", "f", "-print"
                 ])
-                remote_files = output.rstrip().split(b"\n")
+                remote_files = output.decode('UTF-8').rstrip().split("\n")
 
                 return [
                     x[len(remote_path + "/"):] for x in remote_files
-                    if x.startswith(bytes(self.REMOTE_PATH, 'UTF-8'))
+                    if x.startswith(self.REMOTE_PATH)
                 ]
             except subprocess.CalledProcessError as e:
                 error("failed to read remote, retrying.  exception was '%s'" % e)
