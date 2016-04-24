@@ -109,7 +109,7 @@ class SCGITransport(xmlrpc.client.Transport):
             
             self.verbose = verbose
             
-            sock.send(request_body)
+            sock.send(bytes(request_body, 'UTF-8'))
             return self.parse_response(sock.makefile())
         finally:
             if sock:
@@ -126,11 +126,13 @@ class SCGITransport(xmlrpc.client.Transport):
             response_body += data
         
         # Remove SCGI headers from the response.
-        response_header, response_body = re.split(r'\n\s*?\n', response_body,
-                                                  maxsplit=1)
-        
+        print(repr(response_body))
+        response_header, response_body = re.split(
+            r'\n\s*?\n', response_body, maxsplit=1
+        )
         if self.verbose:
             print('body:', repr(response_body))
+        
         
         p.feed(response_body)
         p.close()

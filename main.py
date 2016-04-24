@@ -227,7 +227,7 @@ class RtorrentLowSpaceDriver(object):
     ):
         # Filter out the managed items that were already loaded
         not_already_loaded = []
-        for k, v in managed_group.iteritems():
+        for k, v in managed_group.items():
             if k not in incomplete_group and k not in complete_group:
                 not_already_loaded.append(v)
 
