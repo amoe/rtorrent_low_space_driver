@@ -388,7 +388,7 @@ class RtorrentLowSpaceDriver(object):
 
                 return [
                     x[len(remote_path + "/"):] for x in remote_files
-                    if x.startswith(self.REMOTE_PATH)
+                    if x.startswith(bytes(self.REMOTE_PATH, 'UTF-8'))
                 ]
             except subprocess.CalledProcessError as e:
                 error("failed to read remote, retrying.  exception was '%s'" % e)
