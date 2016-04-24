@@ -126,13 +126,15 @@ class SCGITransport(xmlrpc.client.Transport):
     def parse_response(self, response):
         p, u = self.getparser()
         
-        response_body = ''
+        response_body = b''
         while True:
             data = response.read(1024)
             if not data:
                 break
             response_body += data
         
+        response_body = bytes(response_body, 'UTF-8')
+
         # Remove SCGI headers from the response.
 #        print(repr(response_body))
         response_header, response_body = re.split(
