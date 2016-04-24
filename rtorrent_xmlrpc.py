@@ -118,18 +118,18 @@ class SCGITransport(xmlrpc.client.Transport):
 
 #            print(repr(request_body))
             sock.send(bytes(request_body, 'UTF-8'))
-            return self.parse_response(sock.makefile())
+            return self.parse_response(sock)
         finally:
             if sock:
                 sock.close()
     
-    def parse_response(self, response):
+    def parse_response(self, response_sock):
         p, u = self.getparser()
         
         response_body = b''
         while True:
-            data = response.read(1024)
-            if not data:
+            data = response_sock.recv(1024)
+            if data = b'':
                 break
             response_body += data
         
