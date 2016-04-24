@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import sys
 import logging
@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import time
 import shutil
-import ConfigParser
+import configparser
 import pipes
 
 def splitter(data, pred):
@@ -34,7 +34,7 @@ class RtorrentLowSpaceDriver(object):
         info("Starting.")
 
 
-        cfg = ConfigParser.ConfigParser()
+        cfg = configparser.ConfigParser()
         cfg.read(os.path.expanduser("~/.rtorrent_low_space_driver.cf"))
         self.MANAGED_TORRENTS_DIRECTORY = cfg.get('main', 'managed_torrents_directory')
         self.REMOTE_HOST = cfg.get('main', 'remote_host')
@@ -263,7 +263,7 @@ class RtorrentLowSpaceDriver(object):
                 info("running command: %s" % pformat(cmd))
                 subprocess.check_call(cmd)
                 return
-            except subprocess.CalledProcessError, e:
+            except subprocess.CalledProcessError as e:
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
@@ -332,7 +332,7 @@ class RtorrentLowSpaceDriver(object):
                 ])
 
                 return
-            except subprocess.CalledProcessError, e:
+            except subprocess.CalledProcessError as e:
                 error("failed to read remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
@@ -365,7 +365,7 @@ class RtorrentLowSpaceDriver(object):
                 subprocess.check_call(cmd)
                 os.remove(transfer_list.name)
                 return
-            except subprocess.CalledProcessError, e:
+            except subprocess.CalledProcessError as e:
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
@@ -390,7 +390,7 @@ class RtorrentLowSpaceDriver(object):
                     x[len(remote_path + "/"):] for x in remote_files
                     if x.startswith(self.REMOTE_PATH)
                 ]
-            except subprocess.CalledProcessError, e:
+            except subprocess.CalledProcessError as e:
                 error("failed to read remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
