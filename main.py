@@ -384,7 +384,7 @@ class RtorrentLowSpaceDriver(object):
                     "ssh", self.REMOTE_HOST, "find", pipes.quote(remote_path),
                     "-type", "f", "-print"
                 ])
-                remote_files = output.rstrip().split("\n")
+                remote_files = output.rstrip().split(b"\n")
 
                 return [
                     x[len(remote_path + "/"):] for x in remote_files
