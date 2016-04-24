@@ -133,7 +133,7 @@ class SCGITransport(xmlrpc.client.Transport):
                 break
             response_body += data
         
-        response_body = bytes(response_body, 'UTF-8')
+        response_body = response_body.decode('UTF-8')
 
         # Remove SCGI headers from the response.
 #        print(repr(response_body))
