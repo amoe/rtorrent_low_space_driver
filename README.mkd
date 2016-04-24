@@ -15,12 +15,14 @@ individual files within torrents and syncs these as well.  Only one
 torrent can be handled in this mode.
 
 Your rtorrent will need to be configured for XMLRPC access over SCGI.  To enable
-this, add the following line to `~/.rtorrent.rc`:
+this, add the following lines to `~/.rtorrent.rc`:
 
     network.scgi.open_local = /home/amoe/.rtorrent.sock
+    encoding_list = UTF-8
 
-Obviously you can put the socket file wherever you would like.
-
+You need the encoding specification in order to prevent problems when files in
+torrents have non-ASCII names.  Obviously you can put the socket file wherever
+you would like.
 
 You need to create a config file under `~/.rtorrent_low_space_driver.cf`.  Base
 it on this template:
