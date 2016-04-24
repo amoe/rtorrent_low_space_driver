@@ -129,7 +129,7 @@ class SCGITransport(xmlrpc.client.Transport):
         response_body = b''
         while True:
             data = response_sock.recv(1024)
-            if data = b'':
+            if data == b'':
                 break
             response_body += data
         
