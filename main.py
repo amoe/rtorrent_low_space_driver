@@ -435,8 +435,13 @@ class RtorrentLowSpaceDriver(object):
             }
             file_list.append(datum)
 
+        info("File list was: %s", pformat(file_list))
+
         # filter out items existing on remote
         filtered_items = [x for x in file_list if x['path'] not in exclude_list]
+
+        info("Filtered list was: %s", pformat(file_list))
+
 
         # sort items by size
         filtered_items.sort(key=lambda x: x['size'])
