@@ -293,6 +293,7 @@ class RtorrentLowSpaceDriver(object):
         self.remove_completed_files(realpath, local_completed_files)
         self.set_all_files_to_zero_priority(infohash)
         next_group = self.generate_next_group(infohash, remote_completed_list)
+        info("Next group: %s" % pformat(next_group))
 
         self.set_priority(infohash, [x['id'] for x in next_group], 1)
 
