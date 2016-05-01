@@ -102,10 +102,15 @@ class RtorrentLowSpaceDriver(object):
             return None
 
     def insufficiently_seeded_managed_torrents_exist(self):
+        managed_torrents = self.build_managed_torrents_list()
         rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
+        managed_and_complete =  [
+            managed_torrents[t] for t in rt_complete
+            if t in managed_torrents
+        ]
 
-        for t in rt_complete:
-            ratio = self.get_ratio_of_torrent(t)
+        for t in managed_and_complete:
+            ratio = self.get_ratio_of_torrent(t['hash'])
             info("Scanned ratio as %f" % ratio)
 
             if ratio < self.REQUIRED_RATIO:
