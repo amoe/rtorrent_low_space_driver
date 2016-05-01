@@ -50,7 +50,13 @@ class RtorrentLowSpaceDriver(object):
         if large_torrent is not None:
             info("Detected incomplete & already loaded large torrent.  Switching to large strategy.")
             info("Torrent is %s" % pformat(large_torrent))
-            self.handle_large_torrent_strategy(large_torrent)
+            load_new_p = self.handle_large_torrent_strategy(large_torrent)
+            if load_new_p:
+                # Although we *could* load a new torrent here, it's easier for
+                # algorithmic purposes to just not and wait until the next run.
+                info("Detected completed large torrent.  Clearing until next run.")
+                self.purge_torrent(large_torrent)
+
             info("Large strategy completed successfully.")
         else:
             info("Using small torrents strategy per default.")
@@ -192,22 +198,32 @@ class RtorrentLowSpaceDriver(object):
                 info("Torrent is completed but not seeded to required ratio.  Skipping.")
                 continue
 
-            base_path = self.server.d.get_base_path(infohash)
             self.sync_completed_path_to_remote(base_path)
-            self.server.d.erase(infohash)
-
-            if os.path.isdir(base_path):
-                shutil.rmtree(base_path)
-            else:
-                os.remove(base_path)
-
-            torrent_path = completed_torrent['torrent_path']
-            if os.path.exists(torrent_path):
-                info("For some reason tied torrent existed.  Killing it.")
-                os.remove(torrent_path)
-            else:
-                info("Tied torrent file was already deleted by rtorrent.")
+            self.purge_torrent(completed_torrent)
     
+    # Purge a torrent, this means remove it from rtorrent, also delete the
+    # local files, and remove the torrent from the group of managed torrents.
+    # Takes a torrent object.
+    def purge_torrent(self, completed_torrent):
+        # XXX: This method could probably use some caching
+        managed_torrents = self.build_managed_torrents_list()
+        infohash = completed_torrent['hash']
+        base_path = self.server.d.get_base_path(infohash)
+
+        self.server.d.erase(infohash)
+
+        if os.path.isdir(base_path):
+            shutil.rmtree(base_path)
+        else:
+            os.remove(base_path)
+
+        torrent_path = completed_torrent['torrent_path']
+        if os.path.exists(torrent_path):
+            info("For some reason tied torrent existed.  Killing it.")
+            os.remove(torrent_path)
+        else:
+            info("Tied torrent file was already deleted by rtorrent.")
+
     # "Cumulative used size" here means the actual size used by completed
     # torrents, plus the size projected to be used by the currently loaded
     # incomplete torrents.
@@ -273,6 +289,8 @@ class RtorrentLowSpaceDriver(object):
 
     # The large torrent strategy always works on a single torrent at a time.
     # This has to already have been loaded.
+    # Returns a boolean indicating if this torrent should be removed, and a
+    # new large torrent should be loaded.
     def handle_large_torrent_strategy(self, torrent):
         infohash = torrent['hash']
 
@@ -305,8 +323,10 @@ class RtorrentLowSpaceDriver(object):
               )
             if is_completed:
                 info("We decided that this torrent is completed.")
+                return True
             else:
                 info("Not yet completed, but resuming torrent with no new files.")
+                return False
 
     # returns list of locally completed files as IDs
     def check_for_local_completed_files(self, infohash):
