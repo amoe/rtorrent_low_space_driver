@@ -295,10 +295,18 @@ class RtorrentLowSpaceDriver(object):
         next_group = self.generate_next_group(infohash, remote_completed_list)
         info("Next group: %s" % pformat(next_group))
 
-        self.set_priority(infohash, [x['id'] for x in next_group], 1)
-
-        # NB: hash check?
-        self.start_torrent(infohash)
+        if next_group:
+            self.set_priority(infohash, [x['id'] for x in next_group], 1)
+            self.start_torrent(infohash)
+        else:
+            is_completed = \
+              self.is_large_torrent_remotely_completed(
+                  infohash, remote_completed_list
+              )
+            if is_completed:
+                info("We decided that this torrent is completed.")
+            else:
+                info("Not yet completed, but resuming torrent with no new files.")
 
     # returns list of locally completed files as IDs
     def check_for_local_completed_files(self, infohash):
@@ -408,6 +416,10 @@ class RtorrentLowSpaceDriver(object):
     def _zero_out_file(self, path):
         open(path.encode('utf8'), 'w').close()
 
+
+    def is_large_torrent_remotely_completed(self, infohash, remote_complete_list):
+        file_len = self.server.d.get_size_files(infohash)
+        return len(remote_completed_list) == file_len
 
     def set_all_files_to_zero_priority(self, infohash):
         id_list = []
