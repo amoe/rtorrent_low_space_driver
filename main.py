@@ -417,7 +417,7 @@ class RtorrentLowSpaceDriver(object):
         open(path.encode('utf8'), 'w').close()
 
 
-    def is_large_torrent_remotely_completed(self, infohash, remote_complete_list):
+    def is_large_torrent_remotely_completed(self, infohash, remote_completed_list):
         file_len = self.server.d.get_size_files(infohash)
         return len(remote_completed_list) == file_len
 
