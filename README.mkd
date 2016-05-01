@@ -14,6 +14,8 @@ space calculations.  Once no more torrents will fit, it downloads
 individual files within torrents and syncs these as well.  Only one
 torrent can be handled in this mode.
 
+It requires Python 3.
+
 Your rtorrent will need to be configured for XMLRPC access over SCGI.  To enable
 this, add the following lines to `~/.rtorrent.rc`:
 
