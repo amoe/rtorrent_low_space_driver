@@ -331,6 +331,7 @@ class RtorrentLowSpaceDriver(object):
                 return True
             else:
                 info("Not yet completed, but resuming torrent with no new files.")
+                self.start_torrent(infohash)
                 return False
 
     # returns list of locally completed files as IDs
