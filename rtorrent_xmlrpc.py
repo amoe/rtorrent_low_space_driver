@@ -80,15 +80,23 @@
 
 import re
 import socket
-import urllib
-import xmlrpclib
+import urllib.parse
+import xmlrpc
+import xmlrpc.client
 
-
-class SCGITransport(xmlrpclib.Transport):
+class SCGITransport(xmlrpc.client.Transport):
     def single_request(self, host, handler, request_body, verbose=0):
         # Add SCGI headers to the request.
         headers = {'CONTENT_LENGTH': str(len(request_body)), 'SCGI': '1'}
-        header = '\x00'.join(('%s\x00%s' % item for item in headers.iteritems())) + '\x00'
+
+        # NB: For some reason these headers need to be in this exact order,
+        # hence the below call to sorted() -- which sorts by key.
+        # Not sure exactly why, can be a bug in either this code or rtorrent
+        # xmlrpc handling code.  But this bug only occurs in python 3 for
+        # some reason that must be bizarre.
+        header = '\x00'.join(
+            ('%s\x00%s' % item for item in sorted(headers.items()))
+        ) + '\x00'
         header = '%d:%s' % (len(header), header)
         request_body = '%s,%s' % (header, request_body)
         
@@ -106,29 +114,35 @@ class SCGITransport(xmlrpclib.Transport):
                 sock.connect(handler)
             
             self.verbose = verbose
-            
-            sock.send(request_body)
-            return self.parse_response(sock.makefile())
+
+
+#            print(repr(request_body))
+            sock.send(bytes(request_body, 'UTF-8'))
+            return self.parse_response(sock)
         finally:
             if sock:
                 sock.close()
     
-    def parse_response(self, response):
+    def parse_response(self, response_sock):
         p, u = self.getparser()
         
-        response_body = ''
+        response_body = b''
         while True:
-            data = response.read(1024)
-            if not data:
+            data = response_sock.recv(1024)
+            if data == b'':
                 break
             response_body += data
         
+        response_body = response_body.decode('UTF-8')
+
         # Remove SCGI headers from the response.
-        response_header, response_body = re.split(r'\n\s*?\n', response_body,
-                                                  maxsplit=1)
-        
+#        print(repr(response_body))
+        response_header, response_body = re.split(
+            r'\n\s*?\n', response_body, maxsplit=1
+        )
         if self.verbose:
-            print 'body:', repr(response_body)
+            print('body:', repr(response_body))
+        
         
         p.feed(response_body)
         p.close()
@@ -136,13 +150,13 @@ class SCGITransport(xmlrpclib.Transport):
         return u.close()
 
 
-class SCGIServerProxy(xmlrpclib.ServerProxy):
+class SCGIServerProxy(xmlrpc.client.ServerProxy):
     def __init__(self, uri, transport=None, encoding=None, verbose=False,
                  allow_none=False, use_datetime=False):
-        type, uri = urllib.splittype(uri)
-        if type not in ('scgi'):
+        url_parsed = urllib.parse.urlparse(uri)
+        if url_parsed.scheme not in ('scgi'):
             raise IOError('unsupported XML-RPC protocol')
-        self.__host, self.__handler = urllib.splithost(uri)
+        self.__host, self.__handler = url_parsed.netloc, url_parsed.path
         if not self.__handler:
             self.__handler = '/'
         
@@ -160,7 +174,7 @@ class SCGIServerProxy(xmlrpclib.ServerProxy):
     def __request(self, methodname, params):
         # call a method on the remote server
     
-        request = xmlrpclib.dumps(params, methodname, encoding=self.__encoding,
+        request = xmlrpc.client.dumps(params, methodname, encoding=self.__encoding,
                                   allow_none=self.__allow_none)
     
         response = self.__transport.request(
@@ -185,7 +199,7 @@ class SCGIServerProxy(xmlrpclib.ServerProxy):
     
     def __getattr__(self, name):
         # magic method dispatcher
-        return xmlrpclib._Method(self.__request, name)
+        return xmlrpc.client._Method(self.__request, name)
 
     # note: to call a remote object with an non-standard name, use
     # result getattr(server, "strange-python-name")(args)
