@@ -316,7 +316,7 @@ class RtorrentLowSpaceDriver(object):
         self.remove_completed_files(realpath, local_completed_files)
         self.set_all_files_to_zero_priority(infohash)
         next_group = self.generate_next_group(infohash, remote_completed_list)
-        info("Next group: %s" % pformat(next_group))
+        debug("Next group: %s" % pformat(next_group))
 
         if next_group:
             self.set_priority(infohash, [x['id'] for x in next_group], 1)
@@ -472,7 +472,7 @@ class RtorrentLowSpaceDriver(object):
             }
             file_list.append(datum)
 
-        info("File list was: %s", pformat(file_list))
+        debug("File list was: %s", pformat(file_list))
 
         # filter out items existing on remote
         filtered_items = [x for x in file_list if x['path'] not in exclude_list]
