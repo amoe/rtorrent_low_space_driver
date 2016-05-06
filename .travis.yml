@@ -1,3 +1,5 @@
+# .travis.yml - travis CI config for github
+
 language: python
 python:
   - "3.4"
