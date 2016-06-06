@@ -45,7 +45,14 @@ Run it from cron with a lock.  Every hour is quite appropriate.
 Although the transfer will often take longer, so the lock is essential
 if you don't want to fill up your process table with rsync instances.
 
+    LANG=en_US.UTF-8
+    
     0 * * * *  lckdo /var/lock/rtorrent_low_space_driver.lock /usr/local/bin/rtorrent-low-space-driver
+
+The LANG setting is required, otherwise some attempts to format output will
+fail, despite UTF-8 being hardcoded in many places.  This is to be considered a
+bug.  (The failing call is `subprocess.check_call` in
+`sync_completed_path_to_remote`.)
 
 Many thanks to Roger Que for the SCGI module, and the authors of
 Pyroscope for a bit of inspiration.
