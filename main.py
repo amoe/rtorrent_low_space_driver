@@ -203,7 +203,7 @@ class RtorrentLowSpaceDriver(object):
                 info("Torrent is completed but not seeded to required ratio.  Skipping.")
                 continue
 
-            base_path = self.server.d.get_base_path(infohash)
+            base_path = self.server.d.get_base_path(infohash).decode('UTF-8')
             self.sync_completed_path_to_remote(base_path)
             self.purge_torrent(completed_torrent)
     
