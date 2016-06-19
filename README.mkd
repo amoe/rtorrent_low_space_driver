@@ -54,6 +54,8 @@ fail, despite UTF-8 being hardcoded in many places.  This is to be considered a
 bug.  (The failing call is `subprocess.check_call` in
 `sync_completed_path_to_remote`.)
 
+If space on the remote runs out, the rsync process can hang in a repeated retry.
+
 Many thanks to Roger Que for the SCGI module, and the authors of
 Pyroscope for a bit of inspiration.
 
