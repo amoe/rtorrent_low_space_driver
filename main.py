@@ -320,7 +320,7 @@ class RtorrentLowSpaceDriver(object):
         self.sync_completed_files_to_remote(realpath, local_completed_files)
         remote_completed_list = self.scan_remote_for_completed_list(realpath)
 
-        info("Remotely completed files: %s" % pformat(remote_completed_list))
+        debug("Remotely completed files: %s" % pformat(remote_completed_list))
 
         self.remove_completed_files(realpath, local_completed_files)
         self.set_all_files_to_zero_priority(infohash)
