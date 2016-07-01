@@ -31,11 +31,19 @@ class RtorrentLowSpaceDriver(object):
     def run(self, args):
         ns = self.initialize(args)
 
-        info("Starting.")
 
 
         cfg = configparser.ConfigParser()
         cfg.read(os.path.expanduser("~/.rtorrent_low_space_driver.cf"))
+
+        log_level = ns.log_level or cfg.get('main', 'log_level', fallback='INFO')
+
+        logging.basicConfig(
+            level=getattr(logging, log_level),
+            format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
+        )
+
+        info("Starting.")
         self.MANAGED_TORRENTS_DIRECTORY = cfg.get('main', 'managed_torrents_directory')
         self.REMOTE_HOST = cfg.get('main', 'remote_host')
         self.REMOTE_PATH = cfg.get('main', 'remote_path')
@@ -522,16 +530,10 @@ class RtorrentLowSpaceDriver(object):
 
         parser.add_argument(
             '--log-level', metavar="LEVEL", type=str, help="Log level",
-            default='INFO'
+            default=None
         )
         parser.add_argument('rest_args', metavar="ARGS", nargs='*')            
         ns = parser.parse_args(args)
-
-        logging.basicConfig(
-            level=getattr(logging, ns.log_level),            
-            format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
-        )
-
         return ns
 
 if __name__ == "__main__":
