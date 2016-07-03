@@ -1,5 +1,7 @@
 # .travis.yml - travis CI config for github
 
+sudo: required
+dist: trusty
 language: python
 python:
   - "3.4"
