@@ -31,8 +31,6 @@ class RtorrentLowSpaceDriver(object):
     def run(self, args):
         ns = self.initialize(args)
 
-
-
         cfg = configparser.ConfigParser()
         cfg.read(os.path.expanduser("~/.rtorrent_low_space_driver.cf"))
 
