@@ -349,6 +349,8 @@ class RtorrentLowSpaceDriver(object):
 
         for i in range(size_files):
             id_ = "%s:f%d" % (infohash, i)
+            path = self.server.f.get_path(id_)
+            debug("Torrent path: %s" % path)
             done = self.server.f.get_completed_chunks(id_)
             total = self.server.f.get_size_chunks(id_)
             priority = self.server.f.get_priority(id_)
