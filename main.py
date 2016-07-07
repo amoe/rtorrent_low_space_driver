@@ -457,7 +457,10 @@ class RtorrentLowSpaceDriver(object):
         debug("Files in torrent: %d" % file_len)
         debug("Remotely completed files: %d" % len(remote_completed_list))
         
-        return len(remote_completed_list) == file_len
+        # Sometimes the remote can be more, because rsync can leave temporaries
+        # around with weird suffixes.  There's no real way to control this, and
+        # it's too dangerous to use --delete, so we just leave them there.
+        return len(remote_completed_list) >= file_len
 
     def set_all_files_to_zero_priority(self, infohash):
         id_list = []
