@@ -452,6 +452,9 @@ class RtorrentLowSpaceDriver(object):
 
     def is_large_torrent_remotely_completed(self, infohash, remote_completed_list):
         file_len = self.server.d.get_size_files(infohash)
+        debug("Files in torrent: %d" % file_len)
+        debug("Remotely completed files: %d" % len(remote_completed_list))
+        
         return len(remote_completed_list) == file_len
 
     def set_all_files_to_zero_priority(self, infohash):
