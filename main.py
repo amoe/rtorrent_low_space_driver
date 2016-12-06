@@ -139,6 +139,8 @@ class RtorrentLowSpaceDriver(object):
             managed_torrents[t] for t in rt_incomplete
             if t in managed_torrents
         ]
+
+        debug("Managed torrents in client: %s" % pformat(managed_torrents_in_client))
         
         return managed_torrents_in_client
 
