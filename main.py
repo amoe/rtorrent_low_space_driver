@@ -181,7 +181,13 @@ class RtorrentLowSpaceDriver(object):
         managed_torrents = {}
         for torrent in os.listdir(self.MANAGED_TORRENTS_DIRECTORY):
              full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
-             t_info = libtorrent.torrent_info(full_path)
+
+             try:
+                 t_info = libtorrent.torrent_info(full_path)
+             except RuntimeError as e:
+                 error("Cannot read torrent info for '%s', perhaps corrupted" % full_path)
+                 raise e
+
              hash_ = str(t_info.info_hash()).upper()
              # We redundantly store the hash in the value, just to make things
              # easier a bit later
