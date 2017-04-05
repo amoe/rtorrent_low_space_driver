@@ -300,6 +300,10 @@ class RtorrentLowSpaceDriver(object):
                 subprocess.check_call(cmd)
                 return
             except subprocess.CalledProcessError as e:
+                if not os.path.exists(source_path):
+                    error("Somehow the source path no longer existed.  This should never happen, bailing out of this transfer.")
+                    break
+
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
