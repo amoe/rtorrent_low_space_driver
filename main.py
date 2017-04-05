@@ -300,6 +300,12 @@ class RtorrentLowSpaceDriver(object):
                 subprocess.check_call(cmd)
                 return
             except subprocess.CalledProcessError as e:
+                # This can happen in some strange cases such as when multiple
+                # managed torrents exist that use the same source directory and
+                # finish at the same time.  One previously synced torrent can
+                # cause the source path to be purged, which will also 
+                # accidentally purge files from another torrent.  We don't
+                # really care about this edge case at present.
                 if not os.path.exists(source_path):
                     error("Somehow the source path no longer existed.  This should never happen, bailing out of this transfer.")
                     break
