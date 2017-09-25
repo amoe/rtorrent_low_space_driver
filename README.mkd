@@ -2,17 +2,16 @@ Rtorrent low space driver.
 
 This is designed for the following situation:
 
-1.  You have a bunch of torrents you want to DL
-2.  You have a server with a fast connection but small space
-3.  You have another SSH-accessible remote host that is slow but has large space
+1.  You have a bunch of torrents you want to download.
+2.  You have a server with a fast connection but small space.
+3.  You have another SSH-accessible remote host that is slow but has large space.
 
-It manages and rotates a directory of torrents.  Adds them to rtorrent
-when they can fit.  Syncs completed files to a remote host once they
-reach the target ratio.  Prioritizes the smallest torrents first.  You
-can use it with unmanaged torrents but it won't factor these into
-space calculations.  Once no more torrents will fit, it downloads
-individual files within torrents and syncs these as well.  Only one
-torrent can be handled in this mode.
+It manages and rotates a directory of torrents.  Adds them to rtorrent when they
+can fit.  Syncs completed files to a remote host once they reach the target
+ratio.  Prioritizes the smallest torrents first.  You can use it with unmanaged
+torrents but it won't factor these into space calculations.  Once no more
+torrents will fit, it downloads individual files within torrents and syncs these
+as well.  Only one torrent can be handled in this mode.
 
 It requires Python 3.
 
