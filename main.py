@@ -2,7 +2,9 @@
 
 import driver
 import sys
+import metadata.libtorrent
 
 if __name__ == "__main__":
-    obj = driver.RtorrentLowSpaceDriver()
+    metadata_svc = metadata.libtorrent.LibtorrentMetadataService()
+    obj = driver.RtorrentLowSpaceDriver(metadata)
     obj.run(sys.argv[1:])

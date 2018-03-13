@@ -6,7 +6,6 @@ import os
 import os.path
 import rtorrent_xmlrpc
 from pprint import pformat
-import libtorrent
 import subprocess
 import tempfile
 import time
@@ -25,6 +24,10 @@ def splitter(data, pred):
 
 class RtorrentLowSpaceDriver(object):
     server = None
+    metadata_service = None
+
+    def __init__(self, metadata_service):
+        self.metadata_service = metadata_service
     
     def run(self, args):
         ns = self.initialize(args)
@@ -181,7 +184,7 @@ class RtorrentLowSpaceDriver(object):
              full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
 
              try:
-                 t_info = libtorrent.torrent_info(full_path)
+                 t_info = self.metadata_service.torrent_info(full_path)
              except RuntimeError as e:
                  error("Cannot read torrent info for '%s', perhaps corrupted" % full_path)
                  raise e
