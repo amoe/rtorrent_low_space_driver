@@ -3,13 +3,15 @@
 # main test suite
 
 import unittest
-from main import RtorrentLowSpaceDriver
+import driver
+import metadata
 
 class TestThings(unittest.TestCase):
     driver = None
 
     def setUp(self):
-        self.driver = RtorrentLowSpaceDriver()
+        metadata_svc = metadata.MetadataService()
+        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc)
 
     def tearDown(self):
         pass
