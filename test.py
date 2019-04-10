@@ -16,7 +16,7 @@ class TestThings(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_main(self):
+    def test_sanity(self):
         self.assertEqual(2+2, 4)
 
     def test_build_next_load_group(self):
