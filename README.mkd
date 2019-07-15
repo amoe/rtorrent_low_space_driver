@@ -13,7 +13,8 @@ torrents but it won't factor these into space calculations.  Once no more
 torrents will fit, it downloads individual files within torrents and syncs these
 as well.  Only one torrent can be handled in this mode.
 
-It requires Python 3.
+It requires Python 3 and Rtorrent 0.9.6 (rtorrent 0.9.7+ will NOT work at
+present.)
 
 Your rtorrent will need to be configured for XMLRPC access over SCGI.  To enable
 this, add the following lines to `~/.rtorrent.rc`:
@@ -57,5 +58,6 @@ If space on the remote runs out, the rsync process can hang in a repeated retry.
 
 Many thanks to Roger Que for the SCGI module, and the authors of
 Pyroscope for a bit of inspiration.
+
 
 License GPLv2
