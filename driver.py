@@ -285,8 +285,12 @@ class RtorrentLowSpaceDriver(object):
         return this_group
 
     def load_torrents(self, torrent_paths):
+        start_function = getattr(self.server, 'load.start')
+
         for torrent_to_load in torrent_paths:
-            self.server.load_start(torrent_to_load['torrent_path'])
+            # For some reason, it needs to have a blank string as the first
+            # target.  See <https://github.com/rakshasa/rtorrent/issues/627>
+            start_function('', torrent_to_load['torrent_path'])
 
 
     def sync_completed_path_to_remote(self, source_path):
