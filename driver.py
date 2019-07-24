@@ -218,7 +218,7 @@ class RtorrentLowSpaceDriver(object):
                 info("Torrent is completed but not seeded to required ratio.  Skipping.")
                 continue
 
-            base_path = self.server.d.get_base_path(infohash)
+            base_path = self.server.d.base_path(infohash)
             self.sync_completed_path_to_remote(base_path)
             self.purge_torrent(completed_torrent)
     
@@ -229,7 +229,7 @@ class RtorrentLowSpaceDriver(object):
         # XXX: This method could probably use some caching
         managed_torrents = self.build_managed_torrents_list()
         infohash = completed_torrent['hash']
-        base_path = self.server.d.get_base_path(infohash)
+        base_path = self.server.d.base_path(infohash)
 
         self.server.d.erase(infohash)
 
@@ -285,8 +285,12 @@ class RtorrentLowSpaceDriver(object):
         return this_group
 
     def load_torrents(self, torrent_paths):
+        start_function = getattr(self.server, 'load.start')
+
         for torrent_to_load in torrent_paths:
-            self.server.load_start(torrent_to_load['torrent_path'])
+            # For some reason, it needs to have a blank string as the first
+            # target.  See <https://github.com/rakshasa/rtorrent/issues/627>
+            start_function('', torrent_to_load['torrent_path'])
 
 
     def sync_completed_path_to_remote(self, source_path):
@@ -325,7 +329,7 @@ class RtorrentLowSpaceDriver(object):
     def handle_large_torrent_strategy(self, torrent):
         infohash = torrent['hash']
 
-        realpath = self.server.d.get_directory(infohash)
+        realpath = self.server.d.directory(infohash)
 
         info("Managing large torrent: %s" % torrent['name'])
 
@@ -364,18 +368,18 @@ class RtorrentLowSpaceDriver(object):
     def check_for_local_completed_files(self, infohash):
         completed_list = []
         
-        size_files = self.server.d.get_size_files(infohash)
+        size_files = self.server.d.size_files(infohash)
 
         for i in range(size_files):
             id_ = "%s:f%d" % (infohash, i)
-            path = self.server.f.get_path(id_)
+            path = self.server.f.path(id_)
             debug("Torrent path: %s" % path)
-            done = self.server.f.get_completed_chunks(id_)
-            total = self.server.f.get_size_chunks(id_)
-            priority = self.server.f.get_priority(id_)
+            done = self.server.f.completed_chunks(id_)
+            total = self.server.f.size_chunks(id_)
+            priority = self.server.f.priority(id_)
 
             if done == total and priority > 0:
-                completed_list.append(self.server.f.get_path(id_))
+                completed_list.append(self.server.f.path(id_))
                 
         return completed_list
 
@@ -472,7 +476,7 @@ class RtorrentLowSpaceDriver(object):
 
 
     def is_large_torrent_remotely_completed(self, infohash, remote_completed_list):
-        file_len = self.server.d.get_size_files(infohash)
+        file_len = self.server.d.size_files(infohash)
         debug("Files in torrent: %d" % file_len)
         debug("Remotely completed files: %d" % len(remote_completed_list))
         
@@ -483,7 +487,7 @@ class RtorrentLowSpaceDriver(object):
 
     def set_all_files_to_zero_priority(self, infohash):
         id_list = []
-        file_len = self.server.d.get_size_files(infohash)
+        file_len = self.server.d.size_files(infohash)
         
         for i in range(file_len):
             id_list.append("%s:f%d" % (infohash, i))
@@ -492,16 +496,16 @@ class RtorrentLowSpaceDriver(object):
 
     def set_priority(self, infohash, ids, priority):
         for id_ in ids:
-            self.server.f.set_priority(id_, priority)
+            self.server.f.priority.set(id_, priority)
         self.server.d.update_priorities(infohash)
 
     def generate_next_group(self, infohash, exclude_list):
-        file_len = self.server.d.get_size_files(infohash)
+        file_len = self.server.d.size_files(infohash)
         file_list = []
         for i in range(file_len):
             id_ = "%s:f%d" % (infohash, i)
-            size = self.server.f.get_size_bytes(id_)
-            path = self.server.f.get_path(id_)
+            size = self.server.f.size_bytes(id_)
+            path = self.server.f.path(id_)
             datum = {
                 'id': id_, 'size': size, 'path': path
             }
@@ -545,7 +549,7 @@ class RtorrentLowSpaceDriver(object):
     # For some reason the XMLRPC interface returns the ratio as an i8, so
     # convert it to the more regular floating point ratio.
     def get_ratio_of_torrent(self, infohash):
-        ratio = self.server.d.get_ratio(infohash)
+        ratio = self.server.d.ratio(infohash)
         float_ratio = ratio / 1000.0
         return float_ratio
         
