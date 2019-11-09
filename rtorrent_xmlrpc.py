@@ -86,8 +86,11 @@ import xmlrpc.client
 
 class SCGITransport(xmlrpc.client.Transport):
     def single_request(self, host, handler, request_body, verbose=0):
+        # Make sure we use the byte-length, not the unicode-string-length
+        encoded_version = bytes(request_body, 'UTF-8')
+
         # Add SCGI headers to the request.
-        headers = {'CONTENT_LENGTH': str(len(request_body)), 'SCGI': '1'}
+        headers = {'CONTENT_LENGTH': str(len(encoded_version)), 'SCGI': '1'}
 
         # NB: For some reason these headers need to be in this exact order,
         # hence the below call to sorted() -- which sorts by key.
@@ -116,7 +119,6 @@ class SCGITransport(xmlrpc.client.Transport):
             self.verbose = verbose
 
 
-#            print(repr(request_body))
             sock.send(bytes(request_body, 'UTF-8'))
             return self.parse_response(sock)
         finally:
