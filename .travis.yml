@@ -11,4 +11,4 @@ before_install:
   - sudo apt-get -qq update
   - sudo apt-get install -y python3-libtorrent
 install: true
-script: python3 test.py
+script: python3 -m pytest test.py

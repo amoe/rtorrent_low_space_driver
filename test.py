@@ -36,7 +36,3 @@ class TestThings(unittest.TestCase):
         next_group = self.driver.build_next_load_group(candidates, limit)
         self.assertEqual(1, len(next_group))
         self.assertEqual("foo", next_group[0]['name'])
-
-
-if __name__ == "__main__":
-    unittest.main()
