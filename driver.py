@@ -294,8 +294,17 @@ class RtorrentLowSpaceDriver(object):
 
 
     def sync_completed_path_to_remote(self, source_path):
+        # We provide a timeout so that the receive-side rsync --server process
+        # can exit properly before we try to reconnect to the receiving host.
+        # The idea comes from <https://stackoverflow.com/questions/16572066/>
+        # 
+        # Use a very conservative wait time so that we account for any disparity
+        # between the timeouts activating on the server and client side.
+        receive_server_timeout = 15
+        local_wait_time = receive_server_timeout * 10
+
         cmd = [
-            "rsync", "-aPv", source_path, 
+            "rsync", "-aPv", f"--timeout={receive_server_timeout}", source_path, 
             self.REMOTE_HOST + ":" + self.REMOTE_PATH
         ]
 
@@ -316,7 +325,7 @@ class RtorrentLowSpaceDriver(object):
                     break
 
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
-                time.sleep(60)
+                time.sleep(local_wait_time)
 
 
 
