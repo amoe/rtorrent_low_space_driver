@@ -1,6 +1,6 @@
 import sys
 import logging
-from logging import debug, info, error
+from logging import debug, info, error, warn
 import argparse
 import os
 import os.path
@@ -344,16 +344,19 @@ class RtorrentLowSpaceDriver(object):
 
         self.stop_torrent(infohash)
         local_completed_files = self.check_for_local_completed_files(infohash)
-
         info("Locally completed files: %s" % pformat(local_completed_files))
 
-        self.sync_completed_files_to_remote(realpath, local_completed_files)
-        remote_completed_list = self.scan_remote_for_completed_list(realpath)
+        if local_completed_files:
+            self.sync_completed_files_to_remote(realpath, local_completed_files)
+        else:
+            info("Nothing completed locally, so not syncing anything.")
 
+        remote_completed_list = self.scan_remote_for_completed_list(realpath)
         debug("Remotely completed files: %s" % pformat(remote_completed_list))
 
         self.remove_completed_files(realpath, local_completed_files)
         self.set_all_files_to_zero_priority(infohash)
+
         next_group = self.generate_next_group(infohash, remote_completed_list)
         debug("Next group: %s" % pformat(next_group))
 
@@ -508,6 +511,32 @@ class RtorrentLowSpaceDriver(object):
             self.server.f.priority.set(id_, priority)
         self.server.d.update_priorities(infohash)
 
+    # Check for the situation where, under the large torrents strategy, a large
+    # torrent has a single file within it that breaches the global space limit.
+    # The only real way to respond to this is for the user to manually increase
+    # the space limit.
+    def check_for_intractable_files(self, file_list):
+        limit = self.SPACE_LIMIT
+
+        for file_ in file_list:
+            path = file_['path']
+            file_size = file_['size']
+            if file_size > self.SPACE_LIMIT:
+                new_suggested_size = file_size + (10 * 2**20)
+                warn(
+                    f"Torrent contains file that is intractable within size limit {limit}!"
+                )
+                warn(
+                    f"Intractable file: {path}"
+                )
+                warn(
+                    f"Size required: {file_size}"
+                )
+                warn(
+                    f"Suggest raising limit to {new_suggested_size}."
+                )
+
+
     def generate_next_group(self, infohash, exclude_list):
         file_len = self.server.d.size_files(infohash)
         file_list = []
@@ -521,6 +550,8 @@ class RtorrentLowSpaceDriver(object):
             file_list.append(datum)
 
         debug("File list was: %s", pformat(file_list))
+
+        self.check_for_intractable_files(file_list)
 
         # filter out items existing on remote
         filtered_items = [x for x in file_list if x['path'] not in exclude_list]
