@@ -23,6 +23,15 @@ def splitter(data, pred):
     return [yes, no]
 
 class RtorrentLowSpaceDriver(object):
+    # We provide a timeout so that the receive-side rsync --server process
+    # can exit properly before we try to reconnect to the receiving host.
+    # The idea comes from <https://stackoverflow.com/questions/16572066/>
+    # 
+    # Use a very conservative wait time so that we account for any disparity
+    # between the timeouts activating on the server and client side.
+    RECEIVE_SERVER_TIMEOUT = 15
+    LOCAL_WAIT_TIME = RECEIVE_SERVER_TIMEOUT * 10
+
     server = None
     metadata_service = None
 
@@ -292,20 +301,18 @@ class RtorrentLowSpaceDriver(object):
             # target.  See <https://github.com/rakshasa/rtorrent/issues/627>
             start_function('', torrent_to_load['torrent_path'])
 
+    def pessimistic_wait(self):
+        time.sleep(self.LOCAL_WAIT_TIME)
+
+    def rsync_command(self):
+        rst = self.RECEIVE_SERVER_TIMEOUT
+        return [
+            'rsync', '-aPv', f"--timeout={rst}"
+        ]
 
     def sync_completed_path_to_remote(self, source_path):
-        # We provide a timeout so that the receive-side rsync --server process
-        # can exit properly before we try to reconnect to the receiving host.
-        # The idea comes from <https://stackoverflow.com/questions/16572066/>
-        # 
-        # Use a very conservative wait time so that we account for any disparity
-        # between the timeouts activating on the server and client side.
-        receive_server_timeout = 15
-        local_wait_time = receive_server_timeout * 10
-
-        cmd = [
-            "rsync", "-aPv", f"--timeout={receive_server_timeout}", source_path, 
-            self.REMOTE_HOST + ":" + self.REMOTE_PATH
+        cmd = self.rsync_command() + [
+            source_path, self.REMOTE_HOST + ":" + self.REMOTE_PATH
         ]
 
         while True:
@@ -325,7 +332,7 @@ class RtorrentLowSpaceDriver(object):
                     break
 
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
-                time.sleep(local_wait_time)
+                self.pessimistic_wait()
 
 
 
@@ -433,9 +440,8 @@ class RtorrentLowSpaceDriver(object):
 
         # slash on the end of the local path makes sure that we sync to remote
         # path, rather than creating a subdir
-        cmd = [
-            "rsync", "-aPv", "--files-from=" + tmpfile_path,
-            realpath + "/", remote_path
+        cmd = self.rsync_command() + [
+            "--files-from=" + tmpfile_path, realpath + "/", remote_path
         ]
 
         while True:
@@ -446,11 +452,10 @@ class RtorrentLowSpaceDriver(object):
                 return
             except subprocess.CalledProcessError as e:
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
-                time.sleep(60)
+                self.pessimistic_wait()
 
     def get_remote_path(self, realpath):
         return os.path.join(self.REMOTE_PATH, os.path.basename(realpath))
-
 
     def scan_remote_for_completed_list(self, realpath):
         remote_path = self.get_remote_path(realpath)
