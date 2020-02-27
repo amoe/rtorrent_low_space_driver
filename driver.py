@@ -353,6 +353,8 @@ class RtorrentLowSpaceDriver(object):
         local_completed_files = self.check_for_local_completed_files(infohash)
         info("Locally completed files: %s" % pformat(local_completed_files))
 
+        self.maybe_create_directory_on_remote(realpath)
+
         if local_completed_files:
             self.sync_completed_files_to_remote(realpath, local_completed_files)
         else:
