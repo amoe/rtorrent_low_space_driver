@@ -425,8 +425,6 @@ class RtorrentLowSpaceDriver(object):
                 time.sleep(60)
 
     def sync_completed_files_to_remote(self, realpath, completed_files):
-        self.maybe_create_directory_on_remote(realpath)
-
         tmpfile_path = None
         
         with tempfile.NamedTemporaryFile(
