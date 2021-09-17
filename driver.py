@@ -36,10 +36,9 @@ class RtorrentLowSpaceDriver(object):
     server = None
     metadata_service = None
 
-    def __init__(self, metadata_service):
+    def __init__(self, metadata_service, args):
         self.metadata_service = metadata_service
 
-    def run(self, args):
         ns = self.initialize(args)
 
         cfg = configparser.ConfigParser()
@@ -60,6 +59,7 @@ class RtorrentLowSpaceDriver(object):
         self.REQUIRED_RATIO = cfg.getfloat('main', 'required_ratio')
         self.SOCKET_URL = cfg.get('main', 'socket_url')
 
+    def run(self):
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
 
         large_torrent = self.check_for_large_managed_torrents()

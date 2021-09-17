@@ -12,7 +12,7 @@ class TestThings(unittest.TestCase):
 
     def setUp(self):
         metadata_svc = metadata.MetadataService()
-        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc)
+        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc, [])
 
     def tearDown(self):
         pass
