@@ -44,7 +44,7 @@ class RtorrentLowSpaceDriver(object):
         cfg = configparser.ConfigParser()
         cfg.read(os.path.expanduser("~/.rtorrent_low_space_driver.cf"))
 
-        log_level = ns.log_level or cfg.get('main', 'log_level', fallback='INFO')
+        log_level = ns.get('log_level') or cfg.get('main', 'log_level', fallback='INFO')
 
         logging.basicConfig(
             level=getattr(logging, log_level),
@@ -599,4 +599,4 @@ class RtorrentLowSpaceDriver(object):
         parser.add_argument('--log-level', metavar="LEVEL", type=str, help="Log level", default=None)
         parser.add_argument('rest_args', metavar="ARGS", nargs='*')            
         ns = parser.parse_args(args)
-        return ns
+        return vars(ns)
