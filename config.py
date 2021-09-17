@@ -26,7 +26,8 @@ def start_logger(ns, cfg):
     log_level = ns.get('log_level') or cfg.get('main', 'log_level', fallback='INFO')
     logging.basicConfig(
         level=getattr(logging, log_level),
-        format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
+        format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s",
+        force=True
     )
 
 
