@@ -13,6 +13,7 @@ import shutil
 import configparser
 import pipes
 
+
 def splitter(data, pred):
     yes, no = [], []
     for d in data:
@@ -21,6 +22,7 @@ def splitter(data, pred):
         else:
             no.append(d)
     return [yes, no]
+
 
 class RtorrentLowSpaceDriver(object):
     # We provide a timeout so that the receive-side rsync --server process
@@ -37,7 +39,7 @@ class RtorrentLowSpaceDriver(object):
 
     def __init__(self, metadata_service):
         self.metadata_service = metadata_service
-    
+
     def run(self, args):
         ns = self.initialize(args)
 
@@ -85,22 +87,24 @@ class RtorrentLowSpaceDriver(object):
                     else:
                         info("Large torrents blocked by small strategy.  Switching to large strategy.")
                         by_size = sorted(load_candidates, key=lambda t: t['size'])
-                    
 
                         # slice off just the first item
                         self.load_torrents(by_size[:1])
                         self.handle_large_torrent_strategy(by_size[0])
                         info("First run of large strategy completed successfully.")
                 else:
-                    info("No candidates to load.  Either all torrents are already loaded, or there are no torrents in the managed directory.")
-                    info("For you to verify, said managed torrent list is %s" % pformat(self.build_managed_torrents_list()))
+                    info(
+                        "No candidates to load.  Either all torrents are already loaded, or there are no torrents in "
+                        "the managed directory.")
+                    info("For you to verify, said managed torrent list is %s" % pformat(
+                        self.build_managed_torrents_list()))
                     info("Now quietly exiting successfully.")
             else:
                 info("Small strategy succeeded.  See you next time!")
 
         info("Done.")
 
-    ## SMALL TORRENT STRATEGY
+    # SMALL TORRENT STRATEGY
 
     def check_for_large_managed_torrents(self):
         managed_torrents_in_client = self.get_incomplete_managed_torrents()
@@ -112,7 +116,7 @@ class RtorrentLowSpaceDriver(object):
         if large_managed_torrents:
             if len(managed_torrents_in_client) != 1:
                 raise Exception("weird condition, there should only be one large torrent at once")
-            
+
             return large_managed_torrents[0]
         else:
             return None
@@ -120,7 +124,7 @@ class RtorrentLowSpaceDriver(object):
     def insufficiently_seeded_managed_torrents_exist(self):
         managed_torrents = self.build_managed_torrents_list()
         rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
-        managed_and_complete =  [
+        managed_and_complete = [
             managed_torrents[t] for t in rt_complete
             if t in managed_torrents
         ]
@@ -140,7 +144,6 @@ class RtorrentLowSpaceDriver(object):
         info("Sufficiently seeded torrents exists, which tbh is kind of weird.")
         return False
 
-
     def get_incomplete_managed_torrents(self):
         managed_torrents = self.build_managed_torrents_list()
         rt_complete, rt_incomplete = self.get_torrents_from_rtorrent()
@@ -151,9 +154,8 @@ class RtorrentLowSpaceDriver(object):
         ]
 
         debug("Managed torrents in client: %s" % pformat(managed_torrents_in_client))
-        
-        return managed_torrents_in_client
 
+        return managed_torrents_in_client
 
     def handle_small_torrents_strategy(self):
         managed_torrents = self.build_managed_torrents_list()
@@ -162,7 +164,7 @@ class RtorrentLowSpaceDriver(object):
             [managed_torrents[t] for t in rt_complete
              if t in managed_torrents]
         )
-        
+
         # Update the list of torrents to account for removals.  Effective
         # space should consider both completed and incomplete torrents,
         # because torrents that didn't seed yet sit around consuming space
@@ -190,24 +192,24 @@ class RtorrentLowSpaceDriver(object):
     def build_managed_torrents_list(self):
         managed_torrents = {}
         for torrent in os.listdir(self.MANAGED_TORRENTS_DIRECTORY):
-             full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
+            full_path = os.path.join(self.MANAGED_TORRENTS_DIRECTORY, torrent)
 
-             try:
-                 t_info = self.metadata_service.torrent_info(full_path)
-             except RuntimeError as e:
-                 error("Cannot read torrent info for '%s', perhaps corrupted" % full_path)
-                 raise e
+            try:
+                t_info = self.metadata_service.torrent_info(full_path)
+            except RuntimeError as e:
+                error("Cannot read torrent info for '%s', perhaps corrupted" % full_path)
+                raise e
 
-             hash_ = str(t_info.info_hash()).upper()
-             # We redundantly store the hash in the value, just to make things
-             # easier a bit later
-             datum = {
-                 'torrent_path': full_path,
-                 'size': t_info.total_size(),
-                 'name': t_info.name(),
-                 'hash': hash_,
-             }
-             managed_torrents[hash_] = datum
+            hash_ = str(t_info.info_hash()).upper()
+            # We redundantly store the hash in the value, just to make things
+            # easier a bit later
+            datum = {
+                'torrent_path': full_path,
+                'size': t_info.total_size(),
+                'name': t_info.name(),
+                'hash': hash_,
+            }
+            managed_torrents[hash_] = datum
         return managed_torrents
 
     def get_torrents_from_rtorrent(self):
@@ -230,7 +232,7 @@ class RtorrentLowSpaceDriver(object):
             base_path = self.server.d.base_path(infohash)
             self.sync_completed_path_to_remote(base_path)
             self.purge_torrent(completed_torrent)
-    
+
     # Purge a torrent, this means remove it from rtorrent, also delete the
     # local files, and remove the torrent from the group of managed torrents.
     # Takes a torrent object.
@@ -269,7 +271,7 @@ class RtorrentLowSpaceDriver(object):
         return effective_available_size
 
     def filter_out_managed_items_already_in_client(
-        self, managed_group, incomplete_group, complete_group
+            self, managed_group, incomplete_group, complete_group
     ):
         # Filter out the managed items that were already loaded
         not_already_loaded = []
@@ -328,15 +330,15 @@ class RtorrentLowSpaceDriver(object):
                 # accidentally purge files from another torrent.  We don't
                 # really care about this edge case at present.
                 if not os.path.exists(source_path):
-                    error("Somehow the source path no longer existed.  This should never happen, bailing out of this transfer.")
+                    error(
+                        "Somehow the source path no longer existed.  This should never happen, bailing out of this "
+                        "transfer.")
                     break
 
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 self.pessimistic_wait()
 
-
-
-    ## LARGE TORRENT STRATEGY
+    # LARGE TORRENT STRATEGY
 
     # The large torrent strategy always works on a single torrent at a time.
     # This has to already have been loaded.
@@ -374,9 +376,9 @@ class RtorrentLowSpaceDriver(object):
             self.start_torrent(infohash)
         else:
             is_completed = \
-              self.is_large_torrent_remotely_completed(
-                  infohash, remote_completed_list
-              )
+                self.is_large_torrent_remotely_completed(
+                    infohash, remote_completed_list
+                )
             if is_completed:
                 info("We decided that this torrent is completed.")
                 return True
@@ -388,7 +390,7 @@ class RtorrentLowSpaceDriver(object):
     # returns list of locally completed files as IDs
     def check_for_local_completed_files(self, infohash):
         completed_list = []
-        
+
         size_files = self.server.d.size_files(infohash)
 
         for i in range(size_files):
@@ -401,7 +403,7 @@ class RtorrentLowSpaceDriver(object):
 
             if done == total and priority > 0:
                 completed_list.append(self.server.f.path(id_))
-                
+
         return completed_list
 
     def stop_torrent(self, infohash):
@@ -415,7 +417,7 @@ class RtorrentLowSpaceDriver(object):
                 # remote path must be quoted, lest it be interpreted wrongly
                 # by the shell on the server side.
                 subprocess.check_call([
-                    "ssh", self.REMOTE_HOST, "mkdir", "-p", 
+                    "ssh", self.REMOTE_HOST, "mkdir", "-p",
                     pipes.quote(remote_path)
                 ])
 
@@ -426,17 +428,17 @@ class RtorrentLowSpaceDriver(object):
 
     def sync_completed_files_to_remote(self, realpath, completed_files):
         tmpfile_path = None
-        
+
         with tempfile.NamedTemporaryFile(
-            suffix=".lst", prefix="transfer_list-", delete=False
+                suffix=".lst", prefix="transfer_list-", delete=False
         ) as transfer_list:
             tmpfile_path = transfer_list.name
 
             for path in completed_files:
                 transfer_list.write(bytes(path + "\n", 'utf8'))
-        
+
         remote_path = "%s:%s" \
-          % (self.REMOTE_HOST, pipes.quote(self.get_remote_path(realpath)))
+                      % (self.REMOTE_HOST, pipes.quote(self.get_remote_path(realpath)))
 
         # slash on the end of the local path makes sure that we sync to remote
         # path, rather than creating a subdir
@@ -491,12 +493,11 @@ class RtorrentLowSpaceDriver(object):
     def _zero_out_file(self, path):
         open(path.encode('utf8'), 'w').close()
 
-
     def is_large_torrent_remotely_completed(self, infohash, remote_completed_list):
         file_len = self.server.d.size_files(infohash)
         debug("Files in torrent: %d" % file_len)
         debug("Remotely completed files: %d" % len(remote_completed_list))
-        
+
         # Sometimes the remote can be more, because rsync can leave temporaries
         # around with weird suffixes.  There's no real way to control this, and
         # it's too dangerous to use --delete, so we just leave them there.
@@ -505,7 +506,7 @@ class RtorrentLowSpaceDriver(object):
     def set_all_files_to_zero_priority(self, infohash):
         id_list = []
         file_len = self.server.d.size_files(infohash)
-        
+
         for i in range(file_len):
             id_list.append("%s:f%d" % (infohash, i))
 
@@ -527,7 +528,7 @@ class RtorrentLowSpaceDriver(object):
             path = file_['path']
             file_size = file_['size']
             if file_size > self.SPACE_LIMIT:
-                new_suggested_size = file_size + (10 * 2**20)
+                new_suggested_size = file_size + (10 * 2 ** 20)
                 warn(
                     f"Torrent contains file that is intractable within size limit {limit}!"
                 )
@@ -540,7 +541,6 @@ class RtorrentLowSpaceDriver(object):
                 warn(
                     f"Suggest raising limit to {new_suggested_size}."
                 )
-
 
     def generate_next_group(self, infohash, exclude_list):
         file_len = self.server.d.size_files(infohash)
@@ -563,7 +563,6 @@ class RtorrentLowSpaceDriver(object):
 
         info("Filtered list was: %s", pformat(file_list))
 
-
         # sort items by size
         filtered_items.sort(key=lambda x: x['size'])
 
@@ -574,7 +573,7 @@ class RtorrentLowSpaceDriver(object):
             this_size = file_['size']
             if (size_so_far + this_size) > self.SPACE_LIMIT:
                 break
-            
+
             size_so_far += this_size
             group.append(file_)
 
@@ -597,7 +596,6 @@ class RtorrentLowSpaceDriver(object):
         ratio = self.server.d.ratio(infohash)
         float_ratio = ratio / 1000.0
         return float_ratio
-        
 
     def initialize(self, args):
         parser = argparse.ArgumentParser()
@@ -606,7 +604,6 @@ class RtorrentLowSpaceDriver(object):
             '--log-level', metavar="LEVEL", type=str, help="Log level",
             default=None
         )
-        parser.add_argument('rest_args', metavar="ARGS", nargs='*')            
+        parser.add_argument('rest_args', metavar="ARGS", nargs='*')
         ns = parser.parse_args(args)
         return ns
-

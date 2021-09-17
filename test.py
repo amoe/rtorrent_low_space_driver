@@ -6,6 +6,7 @@ import unittest
 import driver
 import metadata
 
+
 class TestThings(unittest.TestCase):
     driver = None
 
@@ -17,19 +18,19 @@ class TestThings(unittest.TestCase):
         pass
 
     def test_sanity(self):
-        self.assertEqual(2+2, 4)
+        self.assertEqual(2 + 2, 4)
 
     def test_build_next_load_group(self):
-        limit = 4 * 2**20
+        limit = 4 * 2 ** 20
 
         candidates = [
             {
                 'name': "foo",
-                'size': 4 * 2**20
+                'size': 4 * 2 ** 20
             },
             {
                 'name': "bar",
-                'size': 4 * 2**20
+                'size': 4 * 2 ** 20
             }
         ]
 
