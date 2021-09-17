@@ -39,24 +39,24 @@ class RtorrentLowSpaceDriver(object):
     def __init__(self, metadata_service, args):
         self.metadata_service = metadata_service
 
-        ns = self.parse_arguments(args)
+        self.ns = self.parse_arguments(args)
 
-        cfg = self.parse_configfile()
+        self.cfg = self.parse_configfile()
 
-        log_level = ns.get('log_level') or cfg.get('main', 'log_level', fallback='INFO')
+        self.log_level = self.ns.get('log_level') or self.cfg.get('main', 'log_level', fallback='INFO')
 
         logging.basicConfig(
-            level=getattr(logging, log_level),
+            level=getattr(logging, self.log_level),
             format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
         )
 
         info("Starting.")
-        self.MANAGED_TORRENTS_DIRECTORY = cfg.get('main', 'managed_torrents_directory')
-        self.REMOTE_HOST = cfg.get('main', 'remote_host')
-        self.REMOTE_PATH = cfg.get('main', 'remote_path')
-        self.SPACE_LIMIT = cfg.getint('main', 'space_limit')
-        self.REQUIRED_RATIO = cfg.getfloat('main', 'required_ratio')
-        self.SOCKET_URL = cfg.get('main', 'socket_url')
+        self.MANAGED_TORRENTS_DIRECTORY = self.cfg.get('main', 'managed_torrents_directory')
+        self.REMOTE_HOST = self.cfg.get('main', 'remote_host')
+        self.REMOTE_PATH = self.cfg.get('main', 'remote_path')
+        self.SPACE_LIMIT = self.cfg.getint('main', 'space_limit')
+        self.REQUIRED_RATIO = self.cfg.getfloat('main', 'required_ratio')
+        self.SOCKET_URL = self.cfg.get('main', 'socket_url')
 
     def run(self):
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
@@ -596,7 +596,7 @@ class RtorrentLowSpaceDriver(object):
     def parse_arguments(self, args):
         parser = argparse.ArgumentParser()
         parser.add_argument('--log-level', metavar="LEVEL", type=str, help="Log level", default=None)
-        parser.add_argument('rest_args', metavar="ARGS", nargs='*')            
+        parser.add_argument('rest_args', metavar="ARGS", nargs='*')
         ns = parser.parse_args(args)
         return vars(ns)
 
