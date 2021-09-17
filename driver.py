@@ -1,6 +1,5 @@
 import logging
 from logging import debug, info, error, warn
-import argparse
 import os
 import os.path
 import rtorrent_xmlrpc
@@ -9,8 +8,9 @@ import subprocess
 import tempfile
 import time
 import shutil
-import configparser
 import pipes
+
+import config
 
 
 def splitter(data, pred):
@@ -37,11 +37,10 @@ class RtorrentLowSpaceDriver(object):
     metadata_service = None
 
     def __init__(self, metadata_service, args):
+        self.ns = config.MyConfiguration(args).arguments
+        self.cfg = config.MyConfiguration(args).configs
+
         self.metadata_service = metadata_service
-
-        self.ns = self.parse_arguments(args)
-
-        self.cfg = self.parse_configfile()
 
         self.start_logger(self.ns, self.cfg)
 
@@ -594,15 +593,3 @@ class RtorrentLowSpaceDriver(object):
         ratio = self.server.d.ratio(infohash)
         float_ratio = ratio / 1000.0
         return float_ratio
-
-    def parse_arguments(self, args):
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--log-level', metavar="LEVEL", type=str, help="Log level", default=None)
-        parser.add_argument('rest_args', metavar="ARGS", nargs='*')
-        ns = parser.parse_args(args)
-        return vars(ns)
-
-    def parse_configfile(self):
-        cfg = configparser.ConfigParser()
-        cfg.read(os.path.expanduser("~/.rtorrent_low_space_driver.cf"))
-        return cfg
