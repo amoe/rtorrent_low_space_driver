@@ -43,12 +43,7 @@ class RtorrentLowSpaceDriver(object):
 
         self.cfg = self.parse_configfile()
 
-        self.log_level = self.ns.get('log_level') or self.cfg.get('main', 'log_level', fallback='INFO')
-
-        logging.basicConfig(
-            level=getattr(logging, self.log_level),
-            format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
-        )
+        self.start_logger(self.ns, self.cfg)
 
         info("Starting.")
         self.MANAGED_TORRENTS_DIRECTORY = self.cfg.get('main', 'managed_torrents_directory')
@@ -57,6 +52,13 @@ class RtorrentLowSpaceDriver(object):
         self.SPACE_LIMIT = self.cfg.getint('main', 'space_limit')
         self.REQUIRED_RATIO = self.cfg.getfloat('main', 'required_ratio')
         self.SOCKET_URL = self.cfg.get('main', 'socket_url')
+
+    def start_logger(self, ns, cfg):
+        log_level = ns.get('log_level') or cfg.get('main', 'log_level', fallback='INFO')
+        logging.basicConfig(
+            level=getattr(logging, log_level),
+            format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
+        )
 
     def run(self):
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
