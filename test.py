@@ -3,6 +3,8 @@
 # main test suite
 
 import unittest
+
+import config
 import driver
 import metadata
 
@@ -12,7 +14,8 @@ class TestThings(unittest.TestCase):
 
     def setUp(self):
         metadata_svc = metadata.MetadataService()
-        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc, [])
+        self.cfg = config.MyConfiguration.configs([])
+        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc, cfg)
 
     def tearDown(self):
         pass

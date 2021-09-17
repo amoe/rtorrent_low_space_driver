@@ -1,10 +1,13 @@
 #! /usr/bin/env python3
 
-import driver
 import sys
+
+import driver
+import config
 import metadata
 
 if __name__ == "__main__":
     metadata_svc = metadata.LibtorrentMetadataService()
-    obj = driver.RtorrentLowSpaceDriver(metadata_svc, sys.argv[1:])
+    cfg = config.MyConfiguration(sys.argv[1:]).configs
+    obj = driver.RtorrentLowSpaceDriver(metadata_svc, cfg)
     obj.run()

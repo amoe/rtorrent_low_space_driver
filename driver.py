@@ -35,9 +35,8 @@ class RtorrentLowSpaceDriver(object):
     server = None
     metadata_service = None
 
-    def __init__(self, metadata_service, args):
-        self.cfg = config.MyConfiguration(args).configs
-
+    def __init__(self, metadata_service, cfg):
+        self.cfg = cfg
         self.metadata_service = metadata_service
 
         info("Starting.")
