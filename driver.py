@@ -1,4 +1,3 @@
-import sys
 import logging
 from logging import debug, info, error, warn
 import argparse
