@@ -1,4 +1,3 @@
-import logging
 from logging import debug, info, error, warn
 import os
 import os.path
@@ -37,12 +36,9 @@ class RtorrentLowSpaceDriver(object):
     metadata_service = None
 
     def __init__(self, metadata_service, args):
-        self.ns = config.MyConfiguration(args).arguments
         self.cfg = config.MyConfiguration(args).configs
 
         self.metadata_service = metadata_service
-
-        self.start_logger(self.ns, self.cfg)
 
         info("Starting.")
         self.MANAGED_TORRENTS_DIRECTORY = self.cfg.get('main', 'managed_torrents_directory')
@@ -51,13 +47,6 @@ class RtorrentLowSpaceDriver(object):
         self.SPACE_LIMIT = self.cfg.getint('main', 'space_limit')
         self.REQUIRED_RATIO = self.cfg.getfloat('main', 'required_ratio')
         self.SOCKET_URL = self.cfg.get('main', 'socket_url')
-
-    def start_logger(self, ns, cfg):
-        log_level = ns.get('log_level') or cfg.get('main', 'log_level', fallback='INFO')
-        logging.basicConfig(
-            level=getattr(logging, log_level),
-            format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
-        )
 
     def run(self):
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
