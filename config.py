@@ -10,6 +10,7 @@ def parse_arguments(args):
     parser = argparse.ArgumentParser()
     parser.add_argument('--log-level', metavar="LEVEL", type=str, help="Log level", default=None)
     parser.add_argument('--config', metavar="FILE", type=str, help='Config file.')
+    parser.add_argument('--log-systemd', action='store_true', help='Format logger to run under a systemd unit.')
     parser.add_argument('rest_args', metavar="ARGS", nargs='*')
     ns = parser.parse_args(args)
     return vars(ns)
@@ -22,15 +23,21 @@ def parse_configfile(config_file):
     return dict(cfg.items('main'))
 
 
-def start_logger(log_level):
+def start_logger(log_level, log_handler):
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, log_level))
     # Set log formatter and handlers
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter("%(asctime)s - %(levelname)8s - %(name)s - %(message)s")
-    handler.setFormatter(formatter)
-
-    root_logger.addHandler(handler)
+    base_format = "%(levelname)8s - %(message)s"
+    if log_handler.get('log_systemd'):
+        hdl = logging.StreamHandler()
+        fmt = logging.Formatter(base_format)
+        hdl.setFormatter(fmt)
+        root_logger.addHandler(hdl)
+    else:
+        hdl = logging.StreamHandler()
+        fmt = logging.Formatter("%(asctime)s - " + base_format)
+        hdl.setFormatter(fmt)
+        root_logger.addHandler(hdl)
 
 
 class Configuration:
@@ -53,7 +60,8 @@ class Configuration:
 
     def set_logger(self):
         """Passes parameters to start_logger from class instance."""
-        log_level = self.arguments.get('log_level', None) \
-                    or self.configs.get('log_level', None) \
+        log_level = self.arguments.get('log_level') \
+                    or self.configs.get('log_level') \
                     or 'INFO'
-        start_logger(log_level)
+        log_handler = {'log_systemd': self.arguments.get('log_systemd')}
+        start_logger(log_level, log_handler)
