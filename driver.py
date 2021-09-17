@@ -39,7 +39,7 @@ class RtorrentLowSpaceDriver(object):
     def __init__(self, metadata_service, args):
         self.metadata_service = metadata_service
 
-        ns = self.initialize(args)
+        ns = self.parse_arguments(args)
 
         cfg = configparser.ConfigParser()
         cfg.read(os.path.expanduser("~/.rtorrent_low_space_driver.cf"))
@@ -594,13 +594,9 @@ class RtorrentLowSpaceDriver(object):
         float_ratio = ratio / 1000.0
         return float_ratio
 
-    def initialize(self, args):
+    def parse_arguments(self, args):
         parser = argparse.ArgumentParser()
-
-        parser.add_argument(
-            '--log-level', metavar="LEVEL", type=str, help="Log level",
-            default=None
-        )
-        parser.add_argument('rest_args', metavar="ARGS", nargs='*')
+        parser.add_argument('--log-level', metavar="LEVEL", type=str, help="Log level", default=None)
+        parser.add_argument('rest_args', metavar="ARGS", nargs='*')            
         ns = parser.parse_args(args)
         return ns
