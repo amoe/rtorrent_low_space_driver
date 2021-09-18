@@ -11,6 +11,7 @@ def parse_arguments(args):
     parser.add_argument('--log-level', metavar="LEVEL", type=str, help="Log level", default=None)
     parser.add_argument('--config', metavar="FILE", type=str, help='Config file.')
     parser.add_argument('--log-systemd', action='store_true', help='Format logger to run under a systemd unit.')
+    parser.add_argument('--log-file', metavar='FILE', type=str, help='Log everything to this file')
     parser.add_argument('rest_args', metavar="ARGS", nargs='*')
     ns = parser.parse_args(args)
     return vars(ns)
@@ -33,7 +34,13 @@ def start_logger(log_level, log_handler):
         fmt = logging.Formatter(base_format)
         hdl.setFormatter(fmt)
         root_logger.addHandler(hdl)
-    else:
+    if log_handler.get('log_file'):
+        hdl = logging.FileHandler(os.path.expanduser(log_handler.get('log_file')))
+        fmt = logging.Formatter("%(asctime)s - " + base_format)
+        hdl.setFormatter(fmt)
+        root_logger.addHandler(hdl)
+    if not log_handler.get('log_systemd') and \
+            not log_handler.get('log_file'):
         hdl = logging.StreamHandler()
         fmt = logging.Formatter("%(asctime)s - " + base_format)
         hdl.setFormatter(fmt)
@@ -63,5 +70,6 @@ class Configuration:
         log_level = self.arguments.get('log_level') \
                     or self.configs.get('log_level') \
                     or 'INFO'
-        log_handler = {'log_systemd': self.arguments.get('log_systemd')}
+        log_handler = {'log_systemd': self.arguments.get('log_systemd'),
+                       'log_file': self.arguments.get('log_file')}
         start_logger(log_level, log_handler)
