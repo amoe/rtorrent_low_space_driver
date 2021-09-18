@@ -16,7 +16,7 @@ def dirs(tmp_path):
     [value.rmdir() for value in values]
 
 
-@pytest.fixture()
+@pytest.fixture
 def cfgfile_valid(dirs):
     string = \
         f'''[main]
@@ -73,6 +73,14 @@ def cfgfile_unexpected_item(dirs):
     os.remove(p)
 
 
+@pytest.fixture
+def logfile(dirs):
+    p = dirs['config'] / 'logfile.txt'
+    p.touch()
+    yield p
+    os.remove(p)
+
+
 class TestConfiguration:
     # These test for a scenario where valid configs where passed to the class
     # We expect the class to run fine.
@@ -92,6 +100,16 @@ class TestConfiguration:
         a = config.Configuration(args).configs
         assert len(a) == 6
         assert config.logging.getLogger().getEffectiveLevel() == 10
+
+    def test_constructor_arg_logfile_cfgfile_valid(self, cfgfile_valid, logfile):
+        # Tests the constructor against a valid argument and valid configfile
+        # Logging in sent to a logfile in config dir
+        p = logfile
+        args = [f'--config={cfgfile_valid}', f'--log-file={p}']
+
+        config.Configuration(args)
+        config.info('Test')
+        assert os.path.getsize(p) != 0
 
     # These test for a scenario where non-critical misconfigs where passed to the class
     # We expect the class to run fine. At the moment the user will not be notified.
