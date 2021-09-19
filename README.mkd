@@ -1,21 +1,45 @@
-Rtorrent low space driver.
+## Rtorrent low space driver.
 
 ![test](https://github.com/amoe/rtorrent_low_space_driver/actions/workflows/run-test.yml/badge.svg)
 
-This is designed for the following situation:
+This is a fully automatic torrent rotator, intended to be used in a server that has small space.
 
-1.  You have a bunch of torrents you want to download.
-2.  You have a server with a fast connection but small space.
-3.  You have another SSH-accessible remote host that is slow but has large space.
+We recommend it's usage in the following scenarios:
+- You have a seedbox with a fast connection but small space.
+- You have a RaspberryPi home server, or any other low-power Single Board Computer, with small space. 
 
-It manages and rotates a directory of torrents.  Adds them to rtorrent when they
-can fit.  Syncs completed files to a remote host once they reach the target
-ratio.  Prioritizes the smallest torrents first.  You can use it with unmanaged
-torrents but it won't factor these into space calculations.  Once no more
-torrents will fit, it downloads individual files within torrents and syncs these
-as well.  Only one torrent can be handled in this mode.
+#### What you'll need
+Besides the small-space server you already have, you will need a service with large storage-space that the 
+software can transfer the completed downloads to. This can be either:
+- A cloud storage account.
+- Another server, SSH-accessible server, with large space to store the files.
 
-It requires Python 3.6+ and Rtorrent 0.9.7+.  Older versions will not work.
+Just put the torrent files you want to download in a directory. The rotator will download and synchronize 
+them to the large storage space service.
+
+#### Here's how the magic happens
+
+The script manages and rotates a directory of torrents.  Adds them to rtorrent
+when they can fit.  Syncs completed files to a storage service
+once they reach the target ratio.  Prioritizes the smallest torrents first. You
+can use it alongside unmanaged torrents but it won't factor these into space
+calculations. Once no more torrents will fit, it downloads individual files
+within torrents and syncs these as well.  Only one torrent can be handled in
+this mode.
+
+It will sync the complete torrents to virtually any cloud storage service, thanks
+to the powerful [Rclone](https://rclone.org/) backend.
+If the destination is a remote server, it must be accessible via SSH.
+
+
+### Installation procedure
+
+You will need to have Python 3.6+ and Rtorrent 0.9.7+ installed.  Older versions 
+will not work.
+
+If you want use the cloud sync feature, you must have [Rclone](https://rclone.org/) installed.
+[Don't forget to configure Rclone first!](https://rclone.org/docs/)
+
 
 Your rtorrent will need to be configured for XMLRPC access over SCGI.  To enable
 this, add the following lines to `~/.rtorrent.rc`:
@@ -43,6 +67,8 @@ All paths need to be absolute.  The value for `space_limit` is in bytes.  The
 value for `socket_url` needs to match the value in `.rtorrent.rc`, but with the
 `scgi://` prefix.
 
+If you want to use Rclone, look at the examples in `/templates`.
+
 Run it from cron with a lock.  Every hour is quite appropriate.
 Although the transfer will often take longer, so the lock is essential
 if you don't want to fill up your process table with rsync instances.
@@ -53,10 +79,11 @@ if you don't want to fill up your process table with rsync instances.
 
 The LANG setting is required, otherwise some attempts to format output will
 fail, despite UTF-8 being hardcoded in many places.  This is to be considered a
-bug.  (The failing call is `subprocess.check_call` in
-`sync_completed_path_to_remote`.)
+bug.  (The failing call is `subprocess.check_call` in Rsync's `sync_path`.)
 
 If space on the remote runs out, the rsync process can hang in a repeated retry.
+
+Please run the command with the flag --help to check for other supported options.
 
 Many thanks to Roger Que for the SCGI module, and the authors of
 Pyroscope for a bit of inspiration.
