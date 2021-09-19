@@ -9,7 +9,8 @@ from pprint import pformat
 
 def get_service(**kwargs):
     """Returns the appropriate class that implements RemoteSyncEngine interface."""
-    if ('remote_sync_service' not in kwargs
+    service = kwargs.get('remote_sync_service')
+    if (service is None
             and 'remote_host' in kwargs
             and 'remote_path' in kwargs):
         # If all three conditions are satisfied, the user is using the old template format.
@@ -17,7 +18,11 @@ def get_service(**kwargs):
         kwargs['remote_sync_service'] = 'rsync'
         kwargs['rsync_host'] = kwargs.pop('remote_host')
         kwargs['rsync_path'] = kwargs.pop('remote_path')
-    return Rsync(**kwargs)
+        return Rsync(**kwargs)
+    elif service == 'rsync':
+        return Rsync(**kwargs)
+    elif service == 'rclone':
+        return Rclone(**kwargs)
 
 
 class RemoteSyncEngine(ABC):
@@ -163,6 +168,126 @@ class Rsync(RemoteSyncEngine):
         return [
             'rsync', '-aPv', f"--timeout={rst}"
         ]
+
+    def pessimistic_wait(self):
+        time.sleep(self.LOCAL_WAIT_TIME)
+
+
+class Rclone(RemoteSyncEngine):
+    """Implements the interface for usage with Rclone"""
+    LOCAL_WAIT_TIME = 300
+    DEFAULT_FLAGS = {'RCLONE_STATS': '8h',
+                     'RCLONE_STATS_ONE_LINE': 'true',
+                     'RCLONE_LOG_FORMAT': '',
+                     'RCLONE_LOG_LEVEL': 'INFO',
+                     'RCLONE_RETRIES': '1'}
+
+    def __init__(self, **kwargs):
+        self.RCLONE_REMOTE = kwargs.pop('rclone_remote')
+        self.RCLONE_PATH = kwargs.pop('rclone_path')
+
+        # Rclone config flags can be set entirely using environment variables.
+        # This is what is done in this implementation.
+        # https://rclone.org/docs/#environment-variables
+        # Warn user that he is overriding some default flags.
+        flags = set(self.DEFAULT_FLAGS.keys()) & set(kwargs.keys())
+        if flags:
+            warning('Flags %s were passed, these might mess up log formatting, thread carefully!' % flags)
+
+        # Store all flags that apply to rclone.
+        # User-defined flags replace default ones.
+        self.rclone_flags = {
+            **self.DEFAULT_FLAGS,
+            **{k.upper(): v for k, v in kwargs if k.startswith('rclone_')}
+        }
+        debug('Rclone environment variables: %s' % pformat(self.rclone_flags, compact=True))
+
+        # Add these as environment variables to the current environment.
+        self.env = {**os.environ, **self.rclone_flags}
+
+    def get_remote_path(self, realpath):
+        return os.path.join(self.RCLONE_PATH, os.path.basename(realpath))
+
+    def maybe_create_directory(self, realpath):
+        remote_path = self.get_remote_path(realpath)
+
+        while True:
+            try:
+                subprocess.check_call(["rclone", "mkdir", self.RCLONE_REMOTE + ':' + remote_path])
+                return
+            except subprocess.CalledProcessError as e:
+                error("failed to read remote, retrying.  exception was '%s'" % e)
+                time.sleep(60)
+
+    def sync_path(self, base_path, base_filename):
+        # Note: The original logic of driver.py calls rsync without a trailing
+        # slash, and works on both single-file and multi-file torrents, but rclone
+        # does not support this mode of operation, therefore, I had to adapt
+        # the logic for use with rclone.
+        #
+        # The following logic should work.
+        #       rclone copyto source destination
+        #   single: source = d.base_path    destination = RCLONE_REMOTE:RCLONE_PATH + d.base_filename
+        #   multi: source = d.base_path     destination = RCLONE_REMOTE:RCLONE_PATH + d.base_filename
+        remote_path = self.get_remote_path(base_filename)
+
+        cmd = ['rclone', 'copyto', base_path, self.RCLONE_REMOTE + ':' + remote_path]
+
+        while True:
+            try:
+                info("running command: %s" % pformat(cmd, compact=True))
+                subprocess.check_call(cmd, env=self.env)
+                return
+            except subprocess.CalledProcessError as e:
+                # This can happen in some strange cases such as when multiple
+                # managed torrents exist that use the same source directory and
+                # finish at the same time.  One previously synced torrent can
+                # cause the source path to be purged, which will also
+                # accidentally purge files from another torrent.  We don't
+                # really care about this edge case at present.
+                if not os.path.exists(base_path):
+                    error(
+                        "Somehow the source path no longer existed.  This should never happen, bailing out of this "
+                        "transfer.")
+                    break
+
+                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
+                self.pessimistic_wait()
+
+    def list_files(self, realpath):
+        remote_path = self.get_remote_path(realpath)
+
+        cmd = ['rclone', 'lsf', '-R', self.RCLONE_REMOTE + ':' + remote_path]
+
+        while True:
+            try:
+                output = subprocess.check_output(cmd)
+
+                # Decode all output immediately and split it, remember that
+                # rtorrent is returning unicode strings to us so we need
+                # to create unicode strings so that they can be compared
+                # to the list of locally completed files.
+                remote_files = output.decode('UTF-8').rstrip().split("\n")
+                return remote_files
+            except subprocess.CalledProcessError as e:
+                error("failed to read remote, retrying.  exception was '%s'" % e)
+                time.sleep(60)
+
+    def sync_files_from_filelist(self, realpath, filelist_path):
+        remote_path = "%s:%s" \
+                      % (self.RCLONE_REMOTE, pipes.quote(self.get_remote_path(realpath)))
+
+        # When realpath is a directory, copyto works exactly as copy command
+        cmd = ['rclone', 'copyto', "--files-from=" + filelist_path, realpath, remote_path]
+
+        while True:
+            try:
+                info("running command: %s", ' '.join(cmd))
+                subprocess.check_call(cmd, env=self.env)
+                return
+            except subprocess.CalledProcessError as e:
+                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
+                self.pessimistic_wait()
 
     def pessimistic_wait(self):
         time.sleep(self.LOCAL_WAIT_TIME)
