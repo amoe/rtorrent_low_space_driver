@@ -6,7 +6,6 @@ import subprocess
 import tempfile
 import time
 import shutil
-import pipes
 
 import rtorrent_xmlrpc
 import remotesync
@@ -23,18 +22,6 @@ def splitter(data, pred):
 
 
 class RtorrentLowSpaceDriver(object):
-    # We provide a timeout so that the receive-side rsync --server process
-    # can exit properly before we try to reconnect to the receiving host.
-    # The idea comes from <https://stackoverflow.com/questions/16572066/>
-    # 
-    # Use a very conservative wait time so that we account for any disparity
-    # between the timeouts activating on the server and client side.
-    RECEIVE_SERVER_TIMEOUT = 15
-    LOCAL_WAIT_TIME = RECEIVE_SERVER_TIMEOUT * 10
-
-    server = None
-    metadata_service = None
-
     def __init__(self, metadata_service, cfg):
         self.metadata_service = metadata_service
 
@@ -217,7 +204,7 @@ class RtorrentLowSpaceDriver(object):
 
             base_path = self.server.d.base_path(infohash)
             base_filename = self.server.d.base_filename(infohash)
-            self.sync_completed_path_to_remote(base_path)
+            self.remote_sync_service.sync_path(base_path, base_filename)
             self.purge_torrent(completed_torrent)
 
     # Purge a torrent, this means remove it from rtorrent, also delete the
@@ -290,41 +277,6 @@ class RtorrentLowSpaceDriver(object):
             # target.  See <https://github.com/rakshasa/rtorrent/issues/627>
             start_function('', torrent_to_load['torrent_path'])
 
-    def pessimistic_wait(self):
-        time.sleep(self.LOCAL_WAIT_TIME)
-
-    def rsync_command(self):
-        rst = self.RECEIVE_SERVER_TIMEOUT
-        return [
-            'rsync', '-aPv', f"--timeout={rst}"
-        ]
-
-    def sync_completed_path_to_remote(self, source_path):
-        cmd = self.rsync_command() + [
-            source_path, self.REMOTE_HOST + ":" + self.REMOTE_PATH
-        ]
-
-        while True:
-            try:
-                info("running command: %s" % pformat(cmd))
-                subprocess.check_call(cmd)
-                return
-            except subprocess.CalledProcessError as e:
-                # This can happen in some strange cases such as when multiple
-                # managed torrents exist that use the same source directory and
-                # finish at the same time.  One previously synced torrent can
-                # cause the source path to be purged, which will also 
-                # accidentally purge files from another torrent.  We don't
-                # really care about this edge case at present.
-                if not os.path.exists(source_path):
-                    error(
-                        "Somehow the source path no longer existed.  This should never happen, bailing out of this "
-                        "transfer.")
-                    break
-
-                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
-                self.pessimistic_wait()
-
     # LARGE TORRENT STRATEGY
 
     # The large torrent strategy always works on a single torrent at a time.
@@ -342,14 +294,14 @@ class RtorrentLowSpaceDriver(object):
         local_completed_files = self.check_for_local_completed_files(infohash)
         info("Locally completed files: %s" % pformat(local_completed_files))
 
-        self.maybe_create_directory_on_remote(realpath)
+        self.remote_sync_service.maybe_create_directory(realpath)
 
         if local_completed_files:
             self.sync_completed_files_to_remote(realpath, local_completed_files)
         else:
             info("Nothing completed locally, so not syncing anything.")
 
-        remote_completed_list = self.scan_remote_for_completed_list(realpath)
+        remote_completed_list = self.remote_sync_service.list_files(realpath)
         debug("Remotely completed files: %s" % pformat(remote_completed_list))
 
         self.remove_completed_files(realpath, local_completed_files)
@@ -396,23 +348,6 @@ class RtorrentLowSpaceDriver(object):
     def stop_torrent(self, infohash):
         self.server.d.stop(infohash)
 
-    def maybe_create_directory_on_remote(self, realpath):
-        remote_path = self.get_remote_path(realpath)
-
-        while True:
-            try:
-                # remote path must be quoted, lest it be interpreted wrongly
-                # by the shell on the server side.
-                subprocess.check_call([
-                    "ssh", self.REMOTE_HOST, "mkdir", "-p",
-                    pipes.quote(remote_path)
-                ])
-
-                return
-            except subprocess.CalledProcessError as e:
-                error("failed to read remote, retrying.  exception was '%s'" % e)
-                time.sleep(60)
-
     def sync_completed_files_to_remote(self, realpath, completed_files):
         with tempfile.NamedTemporaryFile(
             suffix=".lst", prefix="transfer_list-", delete=False
@@ -422,53 +357,8 @@ class RtorrentLowSpaceDriver(object):
             for path in completed_files:
                 transfer_list.write(bytes(path + "\n", 'utf8'))
 
-        remote_path = "%s:%s" \
-                      % (self.REMOTE_HOST, pipes.quote(self.get_remote_path(realpath)))
-
-        # slash on the end of the local path makes sure that we sync to remote
-        # path, rather than creating a subdir
-        cmd = self.rsync_command() + [
-            "--files-from=" + tmpfile_path, realpath + "/", remote_path
-        ]
-
-        while True:
-            try:
-                info("running command: %s", ' '.join(cmd))
-                subprocess.check_call(cmd)
-                os.remove(transfer_list.name)
-                return
-            except subprocess.CalledProcessError as e:
-                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
-                self.pessimistic_wait()
-
-    def get_remote_path(self, realpath):
-        return os.path.join(self.REMOTE_PATH, os.path.basename(realpath))
-
-    def scan_remote_for_completed_list(self, realpath):
-        remote_path = self.get_remote_path(realpath)
-
-        while True:
-            try:
-                # remote path must be quoted, lest it be interpreted wrongly
-                # by the shell on the server side.
-                output = subprocess.check_output([
-                    "ssh", self.REMOTE_HOST, "find", pipes.quote(remote_path),
-                    "-type", "f", "-print"
-                ])
-
-                # Decode all output immediately and split it, remember that
-                # rtorrent is returning unicode strings to us so we need
-                # to create unicode strings so that they can be compared
-                # to the list of locally completed files.
-                remote_files = output.decode('UTF-8').rstrip().split("\n")
-
-                return [
-                    x[len(remote_path + "/"):] for x in remote_files
-                    if x.startswith(self.REMOTE_PATH)
-                ]
-            except subprocess.CalledProcessError as e:
-                error("failed to read remote, retrying.  exception was '%s'" % e)
-                time.sleep(60)
+        self.remote_sync_service.sync_files_from_filelist(realpath, tmpfile_path)
+        os.remove(transfer_list.name)
 
     def remove_completed_files(self, realpath, completed_files):
         for path in completed_files:
