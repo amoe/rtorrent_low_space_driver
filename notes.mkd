@@ -1,4 +1,6 @@
 NOTES
 =====
 
-* consider also resetting torrent throttle to a calculated value
+* consider also resetting torrent throttle to a calculated value 
+* DEPRECATION WARNING: Config keys "remote_host" and "remote_path" have been replaced by "rsync_host" and "rsync_path",
+ please migrate to using the new keys. Backwards-compatibility will be maintained for the next releases;
