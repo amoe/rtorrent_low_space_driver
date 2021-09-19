@@ -1,13 +1,15 @@
 from logging import debug, info, error, warn
 import os
 import os.path
-import rtorrent_xmlrpc
 from pprint import pformat
 import subprocess
 import tempfile
 import time
 import shutil
 import pipes
+
+import rtorrent_xmlrpc
+import remotesync
 
 
 def splitter(data, pred):
@@ -38,15 +40,15 @@ class RtorrentLowSpaceDriver(object):
 
         info("Starting.")
         self.MANAGED_TORRENTS_DIRECTORY = cfg.get('managed_torrents_directory')
-        self.REMOTE_HOST = cfg.get('remote_host')
-        self.REMOTE_PATH = cfg.get('remote_path')
         self.SPACE_LIMIT = int(cfg.get('space_limit'))
         self.REQUIRED_RATIO = float(cfg.get('required_ratio'))
         self.SOCKET_URL = cfg.get('socket_url')
 
-    def run(self):
+        self.remote_sync_service = remotesync.get_service(**cfg)
+
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
 
+    def run(self):
         large_torrent = self.check_for_large_managed_torrents()
 
         if large_torrent is not None:
