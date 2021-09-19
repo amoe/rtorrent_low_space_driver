@@ -214,6 +214,7 @@ class RtorrentLowSpaceDriver(object):
                 continue
 
             base_path = self.server.d.base_path(infohash)
+            base_filename = self.server.d.base_filename(infohash)
             self.sync_completed_path_to_remote(base_path)
             self.purge_torrent(completed_torrent)
 
