@@ -1,0 +1,11 @@
+# This template in intended to showcase the usage to synchronize to a
+# remote SSH-accessible server.
+# SSH keys should already be configured for passwordless login.
+[main]
+managed_torrents_directory = /home/amoe/managed_torrents
+space_limit = 3221225472
+required_ratio = 1.0
+socket_url = scgi:///home/amoe/.rtorrent.sock
+remote_sync_service = rsync
+rsync_host = somehost                   #The rsync target host, authentication must be passwordless.
+rsync_path = /place/with/space          #Path in the specified rsync host.
