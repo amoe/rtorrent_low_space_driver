@@ -271,7 +271,7 @@ class RtorrentLowSpaceDriver(object):
         return effective_available_size
 
     def filter_out_managed_items_already_in_client(
-            self, managed_group, incomplete_group, complete_group
+        self, managed_group, incomplete_group, complete_group
     ):
         # Filter out the managed items that were already loaded
         not_already_loaded = []
@@ -430,7 +430,7 @@ class RtorrentLowSpaceDriver(object):
         tmpfile_path = None
 
         with tempfile.NamedTemporaryFile(
-                suffix=".lst", prefix="transfer_list-", delete=False
+            suffix=".lst", prefix="transfer_list-", delete=False
         ) as transfer_list:
             tmpfile_path = transfer_list.name
 
