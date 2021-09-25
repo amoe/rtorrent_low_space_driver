@@ -528,7 +528,7 @@ class RtorrentLowSpaceDriver(object):
             path = file_['path']
             file_size = file_['size']
             if file_size > self.SPACE_LIMIT:
-                new_suggested_size = file_size + (10 * 2 ** 20)
+                new_suggested_size = file_size + (10 * 2**20)
                 warn(
                     f"Torrent contains file that is intractable within size limit {limit}!"
                 )
