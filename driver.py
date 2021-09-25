@@ -1,4 +1,3 @@
-import sys
 import logging
 from logging import debug, info, error, warn
 import argparse
@@ -427,8 +426,6 @@ class RtorrentLowSpaceDriver(object):
                 time.sleep(60)
 
     def sync_completed_files_to_remote(self, realpath, completed_files):
-        tmpfile_path = None
-
         with tempfile.NamedTemporaryFile(
             suffix=".lst", prefix="transfer_list-", delete=False
         ) as transfer_list:
