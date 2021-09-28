@@ -6,6 +6,7 @@ import unittest
 import driver
 import metadata
 
+
 class TestThings(unittest.TestCase):
     driver = None
 
