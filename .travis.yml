@@ -1,13 +1,13 @@
 # .travis.yml - travis CI config for github
 
 sudo: required
-dist: xenial
+dist: bionic
 language: python
 python:
   - "3.6"
   - "3.7"
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y python3-libtorrent
+  - pip install lbry-libtorrent
 install: true
-script: python3 -m pytest test.py
+script: python3 -m pytest
