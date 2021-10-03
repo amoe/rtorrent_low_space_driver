@@ -9,8 +9,6 @@ import time
 import shutil
 import pipes
 
-import config
-
 
 def splitter(data, pred):
     yes, no = [], []
