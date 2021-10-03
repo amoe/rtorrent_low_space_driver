@@ -8,6 +8,6 @@ import metadata
 
 if __name__ == "__main__":
     metadata_svc = metadata.LibtorrentMetadataService()
-    cfg = config.MyConfiguration(sys.argv[1:]).configs
+    cfg = config.Configuration(sys.argv[1:]).configs
     obj = driver.RtorrentLowSpaceDriver(metadata_svc, cfg)
     obj.run()

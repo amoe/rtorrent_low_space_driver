@@ -26,7 +26,7 @@ def start_logger(ns, cfg):
     )
 
 
-class MyConfiguration:
+class Configuration:
     def __init__(self, args):
         self.arguments = parse_arguments(args)
         self.configs = parse_configfile()
