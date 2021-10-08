@@ -14,16 +14,21 @@ jobs:
         python-version: [3.6, 3.7, 3.8, 3.9]
     steps:
       - uses: actions/checkout@v2
+        
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install apt packages
-        run: sudo apt-get install -y python3-libtorrent
+
+      # We would use python3-libtorrent from apt here, but 'setup-python'
+      # automatically constructs a venv and avoids using system packages.
+      # 'setup-python' does have the advantage of allowing us to exploit the
+      # test matrix, though.
+          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          pip install pytest lbry-libtorrent
       - name: Test with pytest
         run: |
           python3 -m pytest test.py
