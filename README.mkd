@@ -1,5 +1,7 @@
 Rtorrent low space driver.
 
+![test](https://github.com/amoe/rtorrent_low_space_driver/actions/workflows/run-test.yml/badge.svg)
+
 This is designed for the following situation:
 
 1.  You have a bunch of torrents you want to download.
