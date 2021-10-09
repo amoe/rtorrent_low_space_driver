@@ -1,6 +1,4 @@
-import logging
 from logging import debug, info, error, warn
-import argparse
 import os
 import os.path
 import rtorrent_xmlrpc
@@ -9,7 +7,6 @@ import subprocess
 import tempfile
 import time
 import shutil
-import configparser
 import pipes
 
 
@@ -36,21 +33,8 @@ class RtorrentLowSpaceDriver(object):
     server = None
     metadata_service = None
 
-    def __init__(self, metadata_service):
+    def __init__(self, metadata_service, cfg):
         self.metadata_service = metadata_service
-
-    def run(self, args):
-        ns = self.initialize(args)
-
-        cfg = configparser.ConfigParser()
-        cfg.read(os.path.expanduser("~/.rtorrent_low_space_driver.cf"))
-
-        log_level = ns.log_level or cfg.get('main', 'log_level', fallback='INFO')
-
-        logging.basicConfig(
-            level=getattr(logging, log_level),
-            format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s"
-        )
 
         info("Starting.")
         self.MANAGED_TORRENTS_DIRECTORY = cfg.get('main', 'managed_torrents_directory')
@@ -60,6 +44,7 @@ class RtorrentLowSpaceDriver(object):
         self.REQUIRED_RATIO = cfg.getfloat('main', 'required_ratio')
         self.SOCKET_URL = cfg.get('main', 'socket_url')
 
+    def run(self):
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
 
         large_torrent = self.check_for_large_managed_torrents()
@@ -593,14 +578,3 @@ class RtorrentLowSpaceDriver(object):
         ratio = self.server.d.ratio(infohash)
         float_ratio = ratio / 1000.0
         return float_ratio
-
-    def initialize(self, args):
-        parser = argparse.ArgumentParser()
-
-        parser.add_argument(
-            '--log-level', metavar="LEVEL", type=str, help="Log level",
-            default=None
-        )
-        parser.add_argument('rest_args', metavar="ARGS", nargs='*')
-        ns = parser.parse_args(args)
-        return ns

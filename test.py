@@ -2,25 +2,37 @@
 
 # main test suite
 
-import unittest
+import pytest
+
+import configparser
+
 import driver
 import metadata
 
 
-class TestThings(unittest.TestCase):
-    driver = None
+@pytest.fixture(scope="module")
+def cfgparser_valid():
+    obj = configparser.ConfigParser()
+    obj.read_string(
+        '''[main]
+       managed_torrents_directory = fake_dir/manages
+       space_limit = 14551089152
+       required_ratio = 0
+       socket_url = scgi://fake_dir/.session/rpc.socket
+       remote_host = localhost
+       remote_path = upload'''
+    )
+    return obj
 
-    def setUp(self):
-        metadata_svc = metadata.MetadataService()
-        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc)
 
-    def tearDown(self):
-        pass
-
+class TestThings:
     def test_sanity(self):
-        self.assertEqual(2+2, 4)
+        assert 2+2 == 4
 
-    def test_build_next_load_group(self):
+    def test_build_next_load_group(self, cfgparser_valid):
+        metadata_svc = metadata.MetadataService()
+        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc, cfgparser_valid)
+
         limit = 4 * 2**20
 
         candidates = [
@@ -35,5 +47,5 @@ class TestThings(unittest.TestCase):
         ]
 
         next_group = self.driver.build_next_load_group(candidates, limit)
-        self.assertEqual(1, len(next_group))
-        self.assertEqual("foo", next_group[0]['name'])
+        assert len(next_group) == 1
+        assert "foo" == next_group[0]['name']
