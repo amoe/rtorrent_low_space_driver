@@ -8,7 +8,7 @@ from pprint import pformat
 
 
 def get_service(**kwargs):
-    """Returns the appropriate class."""
+    """Returns the appropriate class that implements RemoteSyncEngine interface."""
     if ('remote_sync_service' not in kwargs
             and 'remote_host' in kwargs
             and 'remote_path' in kwargs):
@@ -21,29 +21,34 @@ def get_service(**kwargs):
 
 
 class RemoteSyncEngine(ABC):
-    """Defines remote sync interface."""
+    """Abstract Class: Remote sync interface."""
     @abstractmethod
     def __init__(self, **kwargs):
         pass
 
     @abstractmethod
     def get_remote_path(self, realpath):
+        """Returns path in the remote."""
         pass
 
     @abstractmethod
     def maybe_create_directory(self, realpath):
+        """Create a directory in the remote."""
         pass
 
     @abstractmethod
     def sync_path(self, base_path, base_filename):
+        """Copy the object of path to remote."""
         pass
 
     @abstractmethod
     def list_files(self, realpath):
+        """List files in the remote."""
         pass
 
     @abstractmethod
     def sync_files_from_filelist(self, realpath, filelist_path):
+        """Copy files from filelist to remote."""
         pass
 
 
