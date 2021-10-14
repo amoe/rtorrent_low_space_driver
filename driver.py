@@ -1,4 +1,4 @@
-from logging import debug, info, error, warn
+from logging import debug, info, error, warning
 import os
 import os.path
 import rtorrent_xmlrpc
@@ -511,16 +511,16 @@ class RtorrentLowSpaceDriver(object):
             file_size = file_['size']
             if file_size > self.SPACE_LIMIT:
                 new_suggested_size = file_size + (10 * 2**20)
-                warn(
+                warning(
                     f"Torrent contains file that is intractable within size limit {limit}!"
                 )
-                warn(
+                warning(
                     f"Intractable file: {path}"
                 )
-                warn(
+                warning(
                     f"Size required: {file_size}"
                 )
-                warn(
+                warning(
                     f"Suggest raising limit to {new_suggested_size}."
                 )
 
