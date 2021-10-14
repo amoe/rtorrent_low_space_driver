@@ -18,6 +18,10 @@ def parse_arguments(args):
 
 
 def parse_configfile(config_file):
+    """Parse configurations stored in the file.
+
+    :type config_file: str
+    """
     cfg = configparser.ConfigParser()
     with open(config_file, 'r') as f:
         cfg.read_file(f)
