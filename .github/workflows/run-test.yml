@@ -31,4 +31,4 @@ jobs:
           pip install pytest lbry-libtorrent
       - name: Test with pytest
         run: |
-          python3 -m pytest test.py
+          python3 -m pytest
