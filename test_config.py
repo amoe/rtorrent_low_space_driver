@@ -81,7 +81,7 @@ class TestConfiguration:
         args = [f'--config={cfgfile_valid}']
 
         a = config.Configuration(args).configs
-        assert len(a.items('main')) == 6
+        assert len(a) == 6
         assert config.logging.getLogger().getEffectiveLevel() == 20
 
     def test_constructor_arg_debug_cfgfile_valid(self, cfgfile_valid):
@@ -90,7 +90,7 @@ class TestConfiguration:
         args = [f'--config={cfgfile_valid}', '--log-level=DEBUG']
 
         a = config.Configuration(args).configs
-        assert len(a.items('main')) == 6
+        assert len(a) == 6
         assert config.logging.getLogger().getEffectiveLevel() == 10
 
     # These test for a scenario where non-critical misconfigs where passed to the class
@@ -100,7 +100,7 @@ class TestConfiguration:
         args = [f'--config={cfgfile_unexpected_item}']
 
         a = config.Configuration(args).configs
-        assert len(a.items('main')) == 7
+        assert len(a) == 7
 
     # These test for a scenario where critical misconfigs where passed to the class
     # We expect the constructor to raise an Error somehow and exit.
