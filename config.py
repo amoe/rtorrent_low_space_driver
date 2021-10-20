@@ -24,11 +24,15 @@ def parse_configfile(config_file):
 
 def start_logger(ns, cfg):
     log_level = ns.get('log_level') or cfg.get('main', 'log_level', fallback='INFO')
-    logging.basicConfig(
-        level=getattr(logging, log_level),
-        format="%(asctime)s - %(levelname)8s - %(name)s - %(message)s",
-        force=True
-    )
+
+    root_logger = logging.getLogger('root')
+    root_logger.setLevel(getattr(logging, log_level))
+    # Set log formatter and handlers
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("%(asctime)s - %(levelname)8s - %(name)s - %(message)s")
+    handler.setFormatter(formatter)
+
+    root_logger.addHandler(handler)
 
 
 class Configuration:
