@@ -4,24 +4,19 @@
 
 import pytest
 
-import configparser
-
 import driver
 import metadata
 
 
 @pytest.fixture(scope="module")
-def cfgparser_valid():
-    obj = configparser.ConfigParser()
-    obj.read_string(
-        '''[main]
-       managed_torrents_directory = fake_dir/manages
-       space_limit = 14551089152
-       required_ratio = 0
-       socket_url = scgi://fake_dir/.session/rpc.socket
-       remote_host = localhost
-       remote_path = upload'''
-    )
+def configs_valid():
+    obj = {'managed_torrents_directory': 'fake_dir/manages',
+           'space_limit': '14551089152',
+           'required_ratio': '0',
+           'socket_url': 'scgi://fake_dir/.session/rpc.socket',
+           'remote_host': 'localhost',
+           'remote_path': 'upload'
+           }
     return obj
 
 
@@ -29,9 +24,9 @@ class TestThings:
     def test_sanity(self):
         assert 2+2 == 4
 
-    def test_build_next_load_group(self, cfgparser_valid):
+    def test_build_next_load_group(self, configs_valid):
         metadata_svc = metadata.MetadataService()
-        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc, cfgparser_valid)
+        self.driver = driver.RtorrentLowSpaceDriver(metadata_svc, configs_valid)
 
         limit = 4 * 2**20
 

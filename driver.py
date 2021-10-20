@@ -37,12 +37,12 @@ class RtorrentLowSpaceDriver(object):
         self.metadata_service = metadata_service
 
         info("Starting.")
-        self.MANAGED_TORRENTS_DIRECTORY = cfg.get('main', 'managed_torrents_directory')
-        self.REMOTE_HOST = cfg.get('main', 'remote_host')
-        self.REMOTE_PATH = cfg.get('main', 'remote_path')
-        self.SPACE_LIMIT = cfg.getint('main', 'space_limit')
-        self.REQUIRED_RATIO = cfg.getfloat('main', 'required_ratio')
-        self.SOCKET_URL = cfg.get('main', 'socket_url')
+        self.MANAGED_TORRENTS_DIRECTORY = cfg.get('managed_torrents_directory')
+        self.REMOTE_HOST = cfg.get('remote_host')
+        self.REMOTE_PATH = cfg.get('remote_path')
+        self.SPACE_LIMIT = int(cfg.get('space_limit'))
+        self.REQUIRED_RATIO = float(cfg.get('required_ratio'))
+        self.SOCKET_URL = cfg.get('socket_url')
 
     def run(self):
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)

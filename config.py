@@ -19,11 +19,11 @@ def parse_configfile(config_file):
     cfg = configparser.ConfigParser()
     with open(config_file, 'r') as f:
         cfg.read_file(f)
-    return cfg
+    return dict(cfg.items('main'))
 
 
 def start_logger(ns, cfg):
-    log_level = ns.get('log_level') or cfg.get('main', 'log_level', fallback='INFO')
+    log_level = ns.get('log_level') or cfg.get('log_level') or 'INFO'
 
     root_logger = logging.getLogger('root')
     root_logger.setLevel(getattr(logging, log_level))
