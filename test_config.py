@@ -73,60 +73,43 @@ def cfgfile_unexpected_item(dirs):
     os.remove(p)
 
 
-@pytest.fixture
-def arg_valid_cfgfile_valid(cfgfile_valid):
-    return [f'--config={cfgfile_valid}']
-
-
-@pytest.fixture
-def arg_debug_cfgfile_valid(cfgfile_valid):
-    return [f'--config={cfgfile_valid}', '--log-level=DEBUG']
-
-
-@pytest.fixture
-def arg_positional_cfgfile_valid(cfgfile_valid):
-    return [f'--config={cfgfile_valid}', 'a.torrent b.torrent']
-
-
-@pytest.fixture
-def arg_valid_cfgfile_repeated_item(cfgfile_repeated_item):
-    return [f'--config={cfgfile_repeated_item}']
-
-
-@pytest.fixture
-def arg_valid_cfgfile_unexpected_item(cfgfile_unexpected_item):
-    return [f'--config={cfgfile_unexpected_item}']
-
-
 class TestConfiguration:
     # These test for a scenario where valid configs where passed to the class
     # We expect the class to run fine.
-    def test_constructor_arg_valid_cfgfile_valid(self, arg_valid_cfgfile_valid):
+    def test_constructor_arg_valid_cfgfile_valid(self, cfgfile_valid):
         # Tests the constructor against a valid argument and valid configfile
-        a = config.Configuration(arg_valid_cfgfile_valid).configs
+        args = [f'--config={cfgfile_valid}']
+
+        a = config.Configuration(args).configs
         assert len(a.items('main')) == 6
         assert config.logging.getLogger().getEffectiveLevel() == 20
 
-    def test_constructor_arg_debug_cfgfile_valid(self, arg_debug_cfgfile_valid):
+    def test_constructor_arg_debug_cfgfile_valid(self, cfgfile_valid):
         # Tests the constructor against a valid argument and valid configfile
         # Running in a non-default log-level, DEBUG
-        a = config.Configuration(arg_debug_cfgfile_valid).configs
+        args = [f'--config={cfgfile_valid}', '--log-level=DEBUG']
+
+        a = config.Configuration(args).configs
         assert len(a.items('main')) == 6
         assert config.logging.getLogger().getEffectiveLevel() == 10
 
     # These test for a scenario where non-critical misconfigs where passed to the class
     # We expect the class to run fine. At the moment the user will not be notified.
-    def test_constructor_arg_valid_config_file_unexpecteditem(self, arg_valid_cfgfile_unexpected_item):
+    def test_constructor_arg_valid_cfgfile_unexpecteditem(self, cfgfile_unexpected_item):
         # Tests the constructor against a valid argument and a configfile with an unexpected item
-        a = config.Configuration(arg_valid_cfgfile_unexpected_item).configs
+        args = [f'--config={cfgfile_unexpected_item}']
+
+        a = config.Configuration(args).configs
         assert len(a.items('main')) == 7
 
     # These test for a scenario where critical misconfigs where passed to the class
     # We expect the constructor to raise an Error somehow and exit.
-    def test_constructor_arg_valid_cfgfile_repeated_item(self, arg_valid_cfgfile_repeated_item):
+    def test_constructor_arg_valid_cfgfile_repeated_item(self, cfgfile_repeated_item):
         # Tests the constructor against a valid argument and an invalid configfile (repeated item)
+        args = [f'--config={cfgfile_repeated_item}']
+
         with pytest.raises(configparser.DuplicateOptionError):
-            config.Configuration(arg_valid_cfgfile_repeated_item)
+            config.Configuration(args)
 
     def test_constructor_arg_valid_noconfigfile(self, caplog):
         args = ['--config= ']
