@@ -118,5 +118,10 @@ class TestConfiguration:
         with pytest.raises(SystemExit) as pytest_wrapped_e:
             config.Configuration(args)
             assert caplog.records[-1].levelname == 'CRITICAL'
-        assert pytest_wrapped_e.type == SystemExit
+            assert caplog.records[-1].message == 'Config file not found! Exiting.'
         assert pytest_wrapped_e.value.code == 1
+
+    def test_constructor_arg_positional_cfgfile_valid(self, cfgfile_valid):
+        """Test not yet implemented"""
+        [f'--config={cfgfile_valid}', 'a.torrent b.torrent']
+        pass
