@@ -98,7 +98,7 @@ def arg_valid_cfgfile_unexpected_item(cfgfile_unexpected_item):
     return [f'--config={cfgfile_unexpected_item}']
 
 
-class TestMyConfiguration:
+class TestConfiguration:
     # These test for a scenario where valid configs where passed to the class
     # We expect the class to run fine.
     def test_constructor_arg_valid_cfgfile_valid(self, arg_valid_cfgfile_valid):
