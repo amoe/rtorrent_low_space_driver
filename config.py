@@ -23,7 +23,7 @@ def parse_configfile(config_file):
 
 
 def start_logger(log_level):
-    root_logger = logging.getLogger('root')
+    root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, log_level))
     # Set log formatter and handlers
     handler = logging.StreamHandler()
