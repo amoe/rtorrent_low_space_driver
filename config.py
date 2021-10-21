@@ -22,9 +22,7 @@ def parse_configfile(config_file):
     return dict(cfg.items('main'))
 
 
-def start_logger(ns, cfg):
-    log_level = ns.get('log_level') or cfg.get('log_level') or 'INFO'
-
+def start_logger(log_level):
     root_logger = logging.getLogger('root')
     root_logger.setLevel(getattr(logging, log_level))
     # Set log formatter and handlers
@@ -39,12 +37,22 @@ class Configuration:
     DEFAULT_CONFIG_FILE_PATH = "~/.rtorrent_low_space_driver.cf"
 
     def __init__(self, args):
+        self.arguments = {}
+        self.configs = {}
+
         self.arguments = parse_arguments(args)
         try:
             self._config_file_path = self.arguments.get('config') or self.DEFAULT_CONFIG_FILE_PATH
             self.configs = parse_configfile(os.path.expanduser(self._config_file_path))
         except FileNotFoundError:
+            self.set_logger()
             critical('Config file not found! Exiting.')
             sys.exit(1)
 
-        start_logger(self.arguments, self.configs)
+        self.set_logger()
+
+    def set_logger(self):
+        log_level = self.arguments.get('log_level', None) \
+                    or self.configs.get('log_level', None) \
+                    or 'INFO'
+        start_logger(log_level)
