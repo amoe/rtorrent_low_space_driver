@@ -52,6 +52,7 @@ class Configuration:
         self.set_logger()
 
     def set_logger(self):
+        """Passes parameters to start_logger from class instance."""
         log_level = self.arguments.get('log_level', None) \
                     or self.configs.get('log_level', None) \
                     or 'INFO'
