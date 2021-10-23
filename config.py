@@ -39,7 +39,7 @@ def start_logger(log_level, log_handler):
         hdl.setFormatter(fmt)
         root_logger.addHandler(hdl)
     if log_handler.get('log_file'):
-        hdl = logging.FileHandler(os.path.expanduser(log_handler.get('log_file')))
+        hdl = logging.FileHandler(log_handler.get('log_file'))
         fmt = logging.Formatter("%(asctime)s - " + base_format)
         hdl.setFormatter(fmt)
         root_logger.addHandler(hdl)
