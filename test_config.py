@@ -105,7 +105,7 @@ class TestConfiguration:
         # Tests the constructor against a valid argument and valid configfile
         # Logging in sent to a logfile in config dir
         p = logfile
-        args = [f'--config={cfgfile_valid}', f'--log-file={p}']
+        args = [f'--config={cfgfile_valid}', f'--log-file={p}'  ]
 
         config.Configuration(args)
         config.info('Test')
