@@ -12,6 +12,17 @@ import remotesync
 
 
 def splitter(data, pred):
+    """Split items to two lists according to an evaluating function.
+
+    Args:
+        data: List, or any other iterable.
+        pred: Evaluating function. When applied to items in 'data' it must
+          return either False or True.
+
+    Returns:
+        A nested list [[yes], [no]], where [yes] contains all objects that
+          evaluated to True, and [no] to False.
+    """
     yes, no = [], []
     for d in data:
         if pred(d):
@@ -22,7 +33,18 @@ def splitter(data, pred):
 
 
 class RtorrentLowSpaceDriver(object):
+    """Torrent rotator algorithm.
+
+    This class has one public method, run(), which runs the torrent rotator
+    algorithm. And no public attributes.
+    """
     def __init__(self, metadata_service, cfg):
+        """Inits RtorrentLowSpaceDriver.
+
+        Args:
+            metadata_service: A class from metadata.py.
+            cfg: configs in dictionary form.
+        """
         self.metadata_service = metadata_service
 
         info("Starting.")
@@ -36,6 +58,7 @@ class RtorrentLowSpaceDriver(object):
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
 
     def run(self):
+        """Runs the torrent rotator algorithm."""
         large_torrent = self.check_for_large_managed_torrents()
 
         if large_torrent is not None:
