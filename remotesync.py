@@ -19,9 +19,9 @@ def get_service(**kwargs):
         kwargs['rsync_host'] = kwargs.pop('remote_host')
         kwargs['rsync_path'] = kwargs.pop('remote_path')
         return Rsync(**kwargs)
-    elif service == 'rsync':
+    if service == 'rsync':
         return Rsync(**kwargs)
-    elif service == 'rclone':
+    if service == 'rclone':
         return Rclone(**kwargs)
 
 
