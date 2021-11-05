@@ -198,7 +198,7 @@ class Rclone(RemoteSyncEngine):
         # User-defined flags replace default ones.
         self.rclone_flags = {
             **self.DEFAULT_FLAGS,
-            **{k.upper(): v for k, v in kwargs if k.startswith('rclone_')}
+            **{k.upper(): v for k, v in kwargs.items() if k.startswith('rclone_')}
         }
         debug('Rclone environment variables: %s' % pformat(self.rclone_flags, compact=True))
 
