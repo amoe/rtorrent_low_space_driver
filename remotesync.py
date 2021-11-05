@@ -192,7 +192,7 @@ class Rclone(RemoteSyncEngine):
         # Warn user that he is overriding some default flags.
         flags = set(self.DEFAULT_FLAGS.keys()) & set(kwargs.keys())
         if flags:
-            warning('Flags %s were passed, these might mess up log formatting, thread carefully!' % flags)
+            warning('Flags %s were passed, these might mess up log formatting, tread carefully!' % flags)
 
         # Store all flags that apply to rclone.
         # User-defined flags replace default ones.
