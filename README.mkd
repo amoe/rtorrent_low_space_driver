@@ -4,7 +4,7 @@
 
 This is a fully automatic torrent rotator, intended to be used in a server that has small space.
 
-We recommend it's usage in the following scenarios:
+We recommend its usage in the following scenarios:
 - You have a seedbox with a fast connection but small space.
 - You have a RaspberryPi home server, or any other low-power Single Board Computer, with small space. 
 
