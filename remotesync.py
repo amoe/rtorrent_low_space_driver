@@ -69,11 +69,8 @@ class Rsync(RemoteSyncEngine):
     LOCAL_WAIT_TIME = RECEIVE_SERVER_TIMEOUT * 10
 
     def __init__(self, **kwargs):
-        self.RSYNC_HOST = kwargs.get('rsync_host')
-        self.RSYNC_PATH = kwargs.get('rsync_path')
-
-        assert self.RSYNC_HOST is not None
-        assert self.RSYNC_PATH is not None
+        self.RSYNC_HOST = kwargs['rsync_host']
+        self.RSYNC_PATH = kwargs['rsync_path']
 
     def get_remote_path(self, realpath):
         return os.path.join(self.RSYNC_PATH, os.path.basename(realpath))
