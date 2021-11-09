@@ -48,10 +48,10 @@ class RtorrentLowSpaceDriver(object):
         self.metadata_service = metadata_service
 
         info("Starting.")
-        self.MANAGED_TORRENTS_DIRECTORY = cfg.get('managed_torrents_directory')
-        self.SPACE_LIMIT = int(cfg.get('space_limit'))
-        self.REQUIRED_RATIO = float(cfg.get('required_ratio'))
-        self.SOCKET_URL = cfg.get('socket_url')
+        self.MANAGED_TORRENTS_DIRECTORY = cfg['managed_torrents_directory']
+        self.SPACE_LIMIT = int(cfg['space_limit'])
+        self.REQUIRED_RATIO = float(cfg['required_ratio'])
+        self.SOCKET_URL = cfg['socket_url']
 
         self.remote_sync_service = remotesync.get_service(**cfg)
 
