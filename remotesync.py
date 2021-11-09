@@ -72,6 +72,9 @@ class Rsync(RemoteSyncEngine):
         self.RSYNC_HOST = kwargs.get('rsync_host')
         self.RSYNC_PATH = kwargs.get('rsync_path')
 
+        assert self.RSYNC_HOST is not None
+        assert self.RSYNC_PATH is not None
+
     def get_remote_path(self, realpath):
         return os.path.join(self.RSYNC_PATH, os.path.basename(realpath))
 
