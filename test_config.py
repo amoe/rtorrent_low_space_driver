@@ -92,20 +92,22 @@ class TestConfiguration:
         assert len(a) == 6
         assert config.logging.getLogger().getEffectiveLevel() == 20
 
-    def test_constructor_arg_debug_cfgfile_valid(self, cfgfile_valid):
+    @pytest.mark.parametrize('log_level, number',
+                             [('DEBUG', 10), ('INFO', 20), ('WARNING', 30), ('ERROR', 40), ('CRITICAL', 50)])
+    def test_constructor_arg_log_level_cfgfile_valid(self, cfgfile_valid, log_level, number):
         # Tests the constructor against a valid argument and valid configfile
-        # Running in a non-default log-level, DEBUG
-        args = [f'--config={cfgfile_valid}', '--log-level=DEBUG']
+        # Log-level parameter is passed.
+        args = [f'--config={cfgfile_valid}', f'--log-level={log_level}']
 
         a = config.Configuration(args).configs
         assert len(a) == 6
-        assert config.logging.getLogger().getEffectiveLevel() == 10
+        assert config.logging.getLogger().getEffectiveLevel() == number
 
     def test_constructor_arg_logfile_cfgfile_valid(self, cfgfile_valid, logfile):
         # Tests the constructor against a valid argument and valid configfile
         # Logging in sent to a logfile in config dir
         p = logfile
-        args = [f'--config={cfgfile_valid}', f'--log-file={p}'  ]
+        args = [f'--config={cfgfile_valid}', f'--log-file={p}']
 
         config.Configuration(args)
         config.info('Test')
@@ -141,5 +143,4 @@ class TestConfiguration:
 
     def test_constructor_arg_positional_cfgfile_valid(self, cfgfile_valid):
         """Test not yet implemented"""
-        [f'--config={cfgfile_valid}', 'a.torrent b.torrent']
         pass
