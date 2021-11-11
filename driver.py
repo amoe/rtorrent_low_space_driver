@@ -1,4 +1,4 @@
-from logging import debug, info, error, warning
+from logging import debug, info, error, warning, critical
 import os
 import os.path
 from pprint import pformat
@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import time
 import shutil
+import sys
 
 import rtorrent_xmlrpc
 import remotesync
@@ -48,12 +49,15 @@ class RtorrentLowSpaceDriver(object):
         self.metadata_service = metadata_service
 
         info("Starting.")
-        self.MANAGED_TORRENTS_DIRECTORY = cfg['managed_torrents_directory']
-        self.SPACE_LIMIT = int(cfg['space_limit'])
-        self.REQUIRED_RATIO = float(cfg['required_ratio'])
-        self.SOCKET_URL = cfg['socket_url']
-
-        self.remote_sync_service = remotesync.get_service(**cfg)
+        try:
+            self.MANAGED_TORRENTS_DIRECTORY = cfg['managed_torrents_directory']
+            self.SPACE_LIMIT = int(cfg['space_limit'])
+            self.REQUIRED_RATIO = float(cfg['required_ratio'])
+            self.SOCKET_URL = cfg['socket_url']
+            self.remote_sync_service = remotesync.get_service(**cfg)
+        except KeyError as e:
+            critical(f'Missing key {e} from the config file. Exiting!')
+            sys.exit(1)
 
         self.server = rtorrent_xmlrpc.SCGIServerProxy(self.SOCKET_URL)
 
