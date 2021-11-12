@@ -77,19 +77,17 @@ class Rsync(RemoteSyncEngine):
 
     def maybe_create_directory(self, realpath):
         remote_path = self.get_remote_path(realpath)
-
+        cmd = ["ssh", self.RSYNC_HOST, "mkdir", "-p", pipes.quote(remote_path)]
+        debug(f"Running command: {' '.join(cmd)}")
         while True:
             try:
                 # remote path must be quoted, lest it be interpreted wrongly
                 # by the shell on the server side.
-                subprocess.check_call([
-                    "ssh", self.RSYNC_HOST, "mkdir", "-p",
-                    pipes.quote(remote_path)
-                ])
-
+                subprocess.run(cmd, check=True, capture_output=True, encoding='utf8')
                 return
             except subprocess.CalledProcessError as e:
-                error("failed to read remote, retrying.  exception was '%s'" % e)
+                debug(f"{self.__class__.__name__}: {e.stderr.strip()}")  # Debug level prints stderr
+                error("Failed to read remote, retrying.  exception was %s" % e)
                 time.sleep(60)
 
     def sync_path(self, base_path, base_filename):
@@ -97,10 +95,10 @@ class Rsync(RemoteSyncEngine):
             base_path, self.RSYNC_HOST + ":" + self.RSYNC_PATH
         ]
 
+        info(f"Running command: {pformat(cmd)}")
         while True:
             try:
-                info("running command: %s" % pformat(cmd))
-                subprocess.check_call(cmd)
+                subprocess.run(cmd, check=True, capture_output=True, encoding='utf8')
                 return
             except subprocess.CalledProcessError as e:
                 # This can happen in some strange cases such as when multiple
@@ -114,34 +112,32 @@ class Rsync(RemoteSyncEngine):
                         "Somehow the source path no longer existed.  This should never happen, bailing out of this "
                         "transfer.")
                     break
-
-                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
+                debug(f"{self.__class__.__name__}: {e.stderr.strip()}")  # Debug level prints stderr
+                error("Failed to sync files to remote, retrying.  exception was '%s'" % e)
                 self.pessimistic_wait()
 
     def list_files(self, realpath):
         remote_path = self.get_remote_path(realpath)
-
+        cmd = ["ssh", self.RSYNC_HOST, "find", pipes.quote(remote_path), "-type", "f", "-print"]
+        debug(f"Running command: {' '.join(cmd)}")
         while True:
             try:
                 # remote path must be quoted, lest it be interpreted wrongly
                 # by the shell on the server side.
-                output = subprocess.check_output([
-                    "ssh", self.RSYNC_HOST, "find", pipes.quote(remote_path),
-                    "-type", "f", "-print"
-                ])
+                output = subprocess.run(cmd, check=True, capture_output=True, encoding='utf8').stdout
 
-                # Decode all output immediately and split it, remember that
-                # rtorrent is returning unicode strings to us so we need
-                # to create unicode strings so that they can be compared
-                # to the list of locally completed files.
-                remote_files = output.decode('UTF-8').rstrip().split("\n")
+                # Split all output, remember that rtorrent is returning unicode
+                # strings to us so we need to create unicode strings so that
+                # they can be compared to the list of locally completed files.
+                remote_files = output.rstrip().split("\n")
 
                 return [
                     x[len(remote_path + "/"):] for x in remote_files
                     if x.startswith(self.RSYNC_PATH)
                 ]
             except subprocess.CalledProcessError as e:
-                error("failed to read remote, retrying.  exception was '%s'" % e)
+                debug(f"{self.__class__.__name__}: {e.stderr.strip()}")  # Debug level prints stderr
+                error("Failed to read remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
     def sync_files_from_filelist(self, realpath, filelist_path):
@@ -154,12 +150,13 @@ class Rsync(RemoteSyncEngine):
             "--files-from=" + filelist_path, realpath + "/", remote_path
         ]
 
+        info(f"Running command: {' '.join(cmd)}")
         while True:
             try:
-                info("running command: %s", ' '.join(cmd))
-                subprocess.check_call(cmd)
+                subprocess.run(cmd, check=True, capture_output=True, encoding='utf8')
                 return
             except subprocess.CalledProcessError as e:
+                debug(f"{self.__class__.__name__}: {e.stderr.strip()}")  # Debug level prints stderr
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 self.pessimistic_wait()
 
@@ -209,13 +206,15 @@ class Rclone(RemoteSyncEngine):
 
     def maybe_create_directory(self, realpath):
         remote_path = self.get_remote_path(realpath)
-
+        cmd = ["rclone", "mkdir", self.RCLONE_REMOTE + ':' + remote_path]
+        debug(f"Running command: {' '.join(cmd)}")
         while True:
             try:
-                subprocess.check_call(["rclone", "mkdir", self.RCLONE_REMOTE + ':' + remote_path])
+                subprocess.run(cmd, check=True, capture_output=True, encoding='utf8', env=self.env)
                 return
             except subprocess.CalledProcessError as e:
-                error("failed to read remote, retrying.  exception was '%s'" % e)
+                debug(f"{self.__class__.__name__}: {e.stderr.strip()}")  # Debug level prints stderr
+                error("Failed to read remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
     def sync_path(self, base_path, base_filename):
@@ -231,11 +230,10 @@ class Rclone(RemoteSyncEngine):
         remote_path = self.get_remote_path(base_filename)
 
         cmd = ['rclone', 'copyto', base_path, self.RCLONE_REMOTE + ':' + remote_path]
-
+        info(f"Running command: {pformat(cmd)}")
         while True:
             try:
-                info("running command: %s" % pformat(cmd, compact=True))
-                subprocess.check_call(cmd, env=self.env)
+                subprocess.run(cmd, check=True, capture_output=True, encoding='utf8', env=self.env)
                 return
             except subprocess.CalledProcessError as e:
                 # This can happen in some strange cases such as when multiple
@@ -249,27 +247,26 @@ class Rclone(RemoteSyncEngine):
                         "Somehow the source path no longer existed.  This should never happen, bailing out of this "
                         "transfer.")
                     break
-
-                error("failed to sync files to remote, retrying.  exception was '%s'" % e)
+                debug(f"{self.__class__.__name__}: {e.stderr.strip()}")  # Debug level prints stderr
+                error("Failed to sync files to remote, retrying.  exception was '%s'" % e)
                 self.pessimistic_wait()
 
     def list_files(self, realpath):
         remote_path = self.get_remote_path(realpath)
-
         cmd = ['rclone', 'lsf', '-R', self.RCLONE_REMOTE + ':' + remote_path]
-
+        debug(f"Running command: {' '.join(cmd)}")
         while True:
             try:
-                output = subprocess.check_output(cmd)
+                output = subprocess.run(cmd, check=True, capture_output=True, encoding='utf8', env=self.env).stdout
 
-                # Decode all output immediately and split it, remember that
-                # rtorrent is returning unicode strings to us so we need
-                # to create unicode strings so that they can be compared
-                # to the list of locally completed files.
-                remote_files = output.decode('UTF-8').rstrip().split("\n")
+                # Split all output, remember that rtorrent is returning unicode
+                # strings to us so we need to create unicode strings so that
+                # they can be compared to the list of locally completed files.
+                remote_files = output.rstrip().split("\n")
                 return remote_files
             except subprocess.CalledProcessError as e:
-                error("failed to read remote, retrying.  exception was '%s'" % e)
+                debug(f"{self.__class__.__name__}: {e.stderr.strip()}")  # Debug level prints stderr
+                error("Failed to read remote, retrying.  exception was '%s'" % e)
                 time.sleep(60)
 
     def sync_files_from_filelist(self, realpath, filelist_path):
@@ -279,12 +276,13 @@ class Rclone(RemoteSyncEngine):
         # When realpath is a directory, copyto works exactly as copy command
         cmd = ['rclone', 'copyto', "--files-from=" + filelist_path, realpath, remote_path]
 
+        info(f"Running command: {' '.join(cmd)}")
         while True:
             try:
-                info("running command: %s", ' '.join(cmd))
-                subprocess.check_call(cmd, env=self.env)
+                subprocess.run(cmd, check=True, capture_output=True, encoding='utf8', env=self.env)
                 return
             except subprocess.CalledProcessError as e:
+                debug(f"{self.__class__.__name__}: {e.stderr.strip()}")  # Debug level prints stderr
                 error("failed to sync files to remote, retrying.  exception was '%s'" % e)
                 self.pessimistic_wait()
 
