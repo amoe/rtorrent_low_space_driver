@@ -166,7 +166,7 @@ class Rsync(RemoteSyncEngine):
     def rsync_command(self):
         rst = self.RECEIVE_SERVER_TIMEOUT
         return [
-            'rsync', '-aPv', f"--timeout={rst}"
+            'rsync', '-a', '--partial', f"--timeout={rst}"
         ]
 
     def pessimistic_wait(self):
