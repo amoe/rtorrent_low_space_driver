@@ -67,7 +67,7 @@ class RtorrentLowSpaceDriver(object):
 
         if large_torrent is not None:
             info("Detected incomplete & already loaded large torrent.  Switching to large strategy.")
-            info("Torrent is %s" % pformat(large_torrent))
+            info("Torrent is \n%s" % pformat(large_torrent, width=120))
             load_new_p = self.handle_large_torrent_strategy(large_torrent)
             if load_new_p:
                 # Although we *could* load a new torrent here, it's easier for
@@ -96,8 +96,8 @@ class RtorrentLowSpaceDriver(object):
                     info(
                         "No candidates to load.  Either all torrents are already loaded, or there are no torrents in "
                         "the managed directory.")
-                    info("For you to verify, said managed torrent list is %s" % pformat(
-                        self.build_managed_torrents_list()))
+                    info("For you to verify, said managed torrent list is \n%s" % pformat(
+                        self.build_managed_torrents_list(), width=120))
                     info("Now quietly exiting successfully.")
             else:
                 info("Small strategy succeeded.  See you next time!")
@@ -153,7 +153,7 @@ class RtorrentLowSpaceDriver(object):
             if t in managed_torrents
         ]
 
-        debug("Managed torrents in client: %s" % pformat(managed_torrents_in_client))
+        debug("Managed torrents in client: \n%s" % pformat(managed_torrents_in_client, width=120))
 
         return managed_torrents_in_client
 
@@ -183,7 +183,7 @@ class RtorrentLowSpaceDriver(object):
             load_candidates, effective_space
         )
 
-        info("Decided to load these torrents: %s" % pformat(load_choices))
+        info("Decided to load these torrents: \n%s" % pformat(load_choices, width=120))
         self.load_torrents(load_choices)
 
         return load_candidates, load_choices
@@ -319,7 +319,7 @@ class RtorrentLowSpaceDriver(object):
 
         self.stop_torrent(infohash)
         local_completed_files = self.check_for_local_completed_files(infohash)
-        info("Locally completed files: %s" % pformat(local_completed_files))
+        info("Locally completed files: \n%s" % pformat(local_completed_files, width=120))
 
         self.remote_sync_service.maybe_create_directory(realpath)
 
@@ -329,13 +329,13 @@ class RtorrentLowSpaceDriver(object):
             info("Nothing completed locally, so not syncing anything.")
 
         remote_completed_list = self.remote_sync_service.list_files(realpath)
-        debug("Remotely completed files: %s" % pformat(remote_completed_list))
+        debug("Remotely completed files: \n%s" % pformat(remote_completed_list, width=120))
 
         self.remove_completed_files(realpath, local_completed_files)
         self.set_all_files_to_zero_priority(infohash)
 
         next_group = self.generate_next_group(infohash, remote_completed_list)
-        debug("Next group: %s" % pformat(next_group))
+        debug("Next group: \n%s" % pformat(next_group, width=120))
 
         if next_group:
             self.set_priority(infohash, [x['id'] for x in next_group], 1)
@@ -456,14 +456,14 @@ class RtorrentLowSpaceDriver(object):
             }
             file_list.append(datum)
 
-        debug("File list was: %s", pformat(file_list))
+        debug("File list was: \n%s", pformat(file_list, width=120))
 
         self.check_for_intractable_files(file_list)
 
         # filter out items existing on remote
         filtered_items = [x for x in file_list if x['path'] not in exclude_list]
 
-        info("Filtered list was: %s", pformat(file_list))
+        info("Filtered list was:\n%s", pformat(file_list, width=120))
 
         # sort items by size
         filtered_items.sort(key=lambda x: x['size'])

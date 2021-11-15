@@ -200,7 +200,7 @@ class Rclone(RemoteSyncEngine):
             **self.DEFAULT_FLAGS,
             **{k.upper(): v for k, v in kwargs.items() if k.startswith('rclone_')}
         }
-        debug('Rclone environment variables: %s' % pformat(self.rclone_flags, compact=True))
+        debug('Rclone environment variables: \n%s' % pformat(self.rclone_flags, width=120, compact=True))
 
         # Add these as environment variables to the current environment.
         self.env = {**os.environ, **self.rclone_flags}
