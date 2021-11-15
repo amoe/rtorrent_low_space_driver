@@ -274,7 +274,7 @@ class Rclone(RemoteSyncEngine):
 
     def sync_files_from_filelist(self, realpath, filelist_path):
         remote_path = "%s:%s" \
-                      % (self.RCLONE_REMOTE, pipes.quote(self.get_remote_path(realpath)))
+                      % (self.RCLONE_REMOTE, self.get_remote_path(realpath))
 
         # When realpath is a directory, copyto works exactly as copy command
         cmd = ['rclone', 'copyto', "--files-from=" + filelist_path, realpath, remote_path]
