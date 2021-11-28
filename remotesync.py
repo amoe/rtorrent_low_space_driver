@@ -178,9 +178,8 @@ class Rclone(RemoteSyncEngine):
     LOCAL_WAIT_TIME = 300
     DEFAULT_FLAGS = {'RCLONE_STATS': '8h',
                      'RCLONE_STATS_ONE_LINE': 'true',
-                     'RCLONE_LOG_FORMAT': '',
-                     'RCLONE_LOG_LEVEL': 'INFO',
-                     'RCLONE_RETRIES': '1'}
+                     'RCLONE_STATS_LOG_LEVEL': 'NOTICE',
+                     'RCLONE_LOG_FORMAT': ''}
 
     def __init__(self, **kwargs):
         self.RCLONE_REMOTE = kwargs.pop('rclone_remote')
