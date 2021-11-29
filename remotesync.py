@@ -185,16 +185,18 @@ class Rclone(RemoteSyncEngine):
         # Rclone config flags can be set entirely using environment variables.
         # This is what is done in this implementation.
         # https://rclone.org/docs/#environment-variables
+        _rclone_flags = {k.upper(): v for k, v in kwargs.items() if k.startswith('rclone_')}
+
         # Warn user that he is overriding some default flags.
-        flags = set(self.DEFAULT_FLAGS.keys()) & set(kwargs.keys())
-        if flags:
-            warning('Flags %s were passed, these might mess up log formatting, tread carefully!' % flags)
+        overwrite = set(self.DEFAULT_FLAGS.keys()) & set(_rclone_flags.keys())
+        if overwrite:
+            warning('Flags %s were passed, these might mess up log formatting, tread carefully!' % overwrite)
 
         # Store all flags that apply to rclone.
         # User-defined flags replace default ones.
         self.rclone_flags = {
             **self.DEFAULT_FLAGS,
-            **{k.upper(): v for k, v in kwargs.items() if k.startswith('rclone_')}
+            **_rclone_flags
         }
         debug('Rclone environment variables: %s' % pformat(self.rclone_flags, compact=True))
 
