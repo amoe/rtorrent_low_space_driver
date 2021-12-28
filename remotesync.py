@@ -125,10 +125,7 @@ class Rsync(RemoteSyncEngine):
                 # remote path must be quoted, lest it be interpreted wrongly
                 # by the shell on the server side.
                 output = subprocess.run(cmd, check=True, capture_output=True, encoding='utf8').stdout
-
-                # Split all output, remember that rtorrent is returning unicode
-                # strings to us so we need to create unicode strings so that
-                # they can be compared to the list of locally completed files.
+                
                 remote_files = output.rstrip().split("\n")
 
                 return [
@@ -260,10 +257,7 @@ class Rclone(RemoteSyncEngine):
         while True:
             try:
                 output = subprocess.run(cmd, check=True, capture_output=True, encoding='utf8', env=self.env).stdout
-
-                # Split all output, remember that rtorrent is returning unicode
-                # strings to us so we need to create unicode strings so that
-                # they can be compared to the list of locally completed files.
+                
                 remote_files = output.rstrip().split("\n")
                 return remote_files
             except subprocess.CalledProcessError as e:
